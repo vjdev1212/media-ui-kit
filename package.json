@@ -1,0 +1,33 @@
+{
+  "name": "@vjdev1212/media-ui-kit",
+  "version": "0.1.0",
+  "description": "Shared React Native UI components",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "react-native": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": [
+    "src"
+  ],
+  "peerDependencies": {
+    "@expo/ui": ">=58.0.0",
+    "@expo/vector-icons": ">=15.0.0",
+    "expo-glass-effect": ">=58.0.0",
+    "expo-linear-gradient": ">=58.0.0",
+    "expo-router": ">=58.0.0",
+    "expo-status-bar": ">=3.0.0",
+    "expo-web-browser": ">=15.0.0",
+    "react-native-reanimated": ">=4.0.0",
+    "react": ">=19.0.0",
+    "react-native": ">=0.88.0",
+    "react-native-svg": ">=15.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
