@@ -28,6 +28,8 @@ export interface MediaGridProps {
     detailsPath: '/movie/details' | '/series/details';
     items?: MediaGridItem[];
     compact?: boolean;
+    showGenres?: boolean;
+    yearOnSeparateLine?: boolean;
     safeAreaEdges?: Edge[];
     onItemPress: (item: MediaGridItem) => void;
     getZoomHref?: (item: MediaGridItem) => Href;
@@ -108,6 +110,8 @@ const MediaGrid: React.FC<MediaGridProps> = ({
     detailsPath,
     items,
     compact = false,
+    showGenres = true,
+    yearOnSeparateLine = false,
     safeAreaEdges = ['left', 'right', 'bottom'],
     onItemPress,
     getZoomHref,
@@ -224,18 +228,16 @@ const MediaGrid: React.FC<MediaGridProps> = ({
     const webMenuActions = menuActions.map(({ id, title }) => ({ id: id ?? title, title }));
 
     const renderItem = useCallback((item: MediaGridItem) => {
-        const genreMetadata = item.genres.length > 0
+        const mediaType = (item.type ?? (detailsPath === '/movie/details' ? 'movie' : 'series')) === 'movie'
+            ? 'Movie'
+            : 'TV Show';
+        const year = item.year?.split('–')[0];
+        const metadata = yearOnSeparateLine
+            ? mediaType
+            : [mediaType, year].filter(Boolean).join(' · ');
+        const secondaryMetadata = showGenres && item.genres.length > 0
             ? item.genres.join(' · ')
-            : [item.year?.split('–')[0], item.imdbRating ? `★ ${item.imdbRating}` : undefined]
-                .filter(Boolean)
-                .join(' · ');
-        const metadata = compact
-            ? [
-                item.type === 'series' ? 'TV Show' : 'Movie',
-                genreMetadata,
-                item.year?.split('–')[0],
-            ].filter(Boolean).join(' · ')
-            : genreMetadata;
+            : showGenres && item.imdbRating ? `★ ${item.imdbRating}` : undefined;
         const menuButton = (
             <Pressable
                 accessibilityRole="button"
@@ -286,6 +288,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                                 <Image
                                     source={{ uri: item.poster }}
                                     onLoad={onImageLoad}
+                                    resizeMethod="resize"
                                     style={[
                                         styles.poster,
                                         { width: posterWidth, height: posterHeight, backgroundColor: colors.backgroundOverlay },
@@ -306,12 +309,28 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                         <NativeText textStyle={compact ? styles.compactMediaTitle : styles.mediaTitle}>
                             {item.name}
                         </NativeText>
-                        {metadata.length > 0 && (
+                        {metadata && (
                             <NativeText textStyle={{
                                 ...(compact ? styles.compactMediaMetadata : styles.mediaMetadata),
                                 color: `${colors.text}CC`,
                             }}>
                                 {metadata}
+                            </NativeText>
+                        )}
+                        {yearOnSeparateLine && year && (
+                            <NativeText textStyle={{
+                                ...(compact ? styles.compactMediaMetadata : styles.mediaMetadata),
+                                color: `${colors.text}CC`,
+                            }}>
+                                {year}
+                            </NativeText>
+                        )}
+                        {secondaryMetadata && (
+                            <NativeText textStyle={{
+                                ...(compact ? styles.compactMediaMetadata : styles.mediaMetadata),
+                                color: `${colors.text}CC`,
+                            }}>
+                                {secondaryMetadata}
                             </NativeText>
                         )}
                     </NativeColumn>
@@ -350,6 +369,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         colors.backgroundOverlay,
         colors.textDim,
         compact,
+        detailsPath,
         handleMenuAction,
         getZoomHref,
         mediaButtonWidth,
@@ -361,6 +381,8 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         posterWidth,
         rowHorizontalPadding,
         rowWidth,
+        showGenres,
+        yearOnSeparateLine,
     ]);
 
     return (
@@ -418,9 +440,13 @@ const styles = StyleSheet.create({
     },
     mediaMetadata: {
         ...typography.subhead,
+        fontSize: 14,
+        lineHeight: 19,
     },
     compactMediaMetadata: {
         ...typography.caption,
+        fontSize: 12,
+        lineHeight: 17,
     },
     divider: {
         height: StyleSheet.hairlineWidth,

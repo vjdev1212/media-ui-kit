@@ -63,6 +63,7 @@ const EpisodeItem: React.FC<EpisodeItemProps> = React.memo(({ item, onEpisodeSel
                     source={{ uri: item.thumbnail }}
                     onLoad={() => handleImageLoad(onImageLoad)}
                     onError={handleImageError}
+                    resizeMethod="resize"
                     style={styles.thumbnail}
                     resizeMode="cover"
                   />

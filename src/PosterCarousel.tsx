@@ -195,6 +195,7 @@ export default function AppleTVCarousel({
                             <Animated.Image
                                 key={`${item.id}-${index}`}
                                 source={{ uri: item.backdropUrl || item.posterUrl }}
+                                resizeMethod="resize"
                                 style={[
                                     StyleSheet.absoluteFill,
                                     {

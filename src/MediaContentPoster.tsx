@@ -26,6 +26,7 @@ const MediaContentPoster: React.FC<MediaContentPosterProps> = ({ background, isP
         )}
         <Animated.Image
           resizeMode={isPortrait ? 'cover' : 'contain'}
+          resizeMethod="resize"
           source={{ uri: background }}
           style={[styles.poster, { opacity: fadeAnim, borderRadius: isPortrait ? 0 : radius.md }]}
           onLoad={startAnimations}

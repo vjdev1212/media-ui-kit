@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
+  FlatList,
   Image,
   Platform,
   Pressable,
@@ -81,6 +82,7 @@ const PosterItem = React.memo(({
             onLoad={onImageLoad}
             onError={() => setImgError(true)}
             style={{ width: posterWidth, height: posterHeight }}
+            resizeMethod="resize"
             resizeMode="cover"
           />
         ) : (
@@ -217,8 +219,20 @@ const PosterList = ({
   }, [apiUrl]);
 
   const handleSeeAllPress = useCallback(() => {
-    onSeeAllPress(apiUrl, title, type);
+    onSeeAllPress(apiUrl, `${type === 'movie' ? 'Movies' : 'Series'} - ${title}`, type);
   }, [apiUrl, onSeeAllPress, title, type]);
+
+  const renderPosterItem = useCallback(({ item, index }: { item: PosterItemData; index: number }) => (
+    <PosterItem
+      item={item}
+      posterWidth={posterWidth}
+      posterHeight={posterHeight}
+      cardHeight={posterCardHeight}
+      type={type}
+      onItemPress={onItemPress}
+      getZoomHref={getZoomHref}
+    />
+  ), [getZoomHref, onItemPress, posterCardHeight, posterHeight, posterWidth, type]);
 
   if (loading) {
     return (
@@ -257,25 +271,18 @@ const PosterList = ({
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={styles.chevronIcon} />
         </NativeButton>
       </RNView>
-      <RNScrollView
+      <FlatList
         horizontal
+        data={data}
+        keyExtractor={(item, index) => `${item.tmdbid}-${index}`}
+        renderItem={renderPosterItem}
+        initialNumToRender={Math.min(data.length, postersPerScreen + 2)}
+        maxToRenderPerBatch={4}
+        windowSize={3}
         showsHorizontalScrollIndicator={false}
         style={listContentStyle}
-        contentContainerStyle={{ flexDirection: 'row', gap: posterGap, paddingRight: containerMargin }}
-      >
-        {data.map((item, index) => (
-          <PosterItem
-            key={`${item.tmdbid}-${index}`}
-            item={item}
-            posterWidth={posterWidth}
-            posterHeight={posterHeight}
-            cardHeight={posterCardHeight}
-            type={type}
-            onItemPress={onItemPress}
-            getZoomHref={getZoomHref}
-          />
-        ))}
-      </RNScrollView>
+        contentContainerStyle={{ gap: posterGap, paddingRight: containerMargin }}
+      />
     </RNView>
   );
 };
