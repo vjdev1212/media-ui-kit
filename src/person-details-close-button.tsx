@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View, type ColorValue } from 'react-native';
 import {
   GlassView,
   isGlassEffectAPIAvailable,
@@ -8,7 +8,7 @@ import {
 
 interface PersonDetailsCloseButtonProps {
   onPress: () => void;
-  color: string;
+  color: ColorValue;
 }
 
 export default function PersonDetailsCloseButton({ onPress, color }: PersonDetailsCloseButtonProps) {

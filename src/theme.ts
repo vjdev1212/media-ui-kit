@@ -1,62 +1,87 @@
 import { Color } from 'expo-router';
-import { Platform } from 'react-native';
+import { Platform, type ColorValue, type NativeColorValue } from 'react-native';
 
-const ACCENT = '#777777';
-const BACKGROUND = '#000000';
-const CARD = '#1C1C1E';
-const SECONDARY_CARD = '#2C2C2E';
-
-export const systemDarkBackground = Platform.select({
-    ios: Color.ios.systemBackground,
-    android: Color.android.dynamic.surface,
-    default: BACKGROUND,
-})!;
+export type ThemeColor = string | NativeColorValue;
 
 export type AppColors = {
-    primary: string;
-    background: string;
-    primaryCard: string;
-    primaryDark: string;
-    primaryMuted: string;
-    primaryBorder: string;
-    primarySurface: string;
-    primarySubtle: string;
-    primaryGhost: string;
-    primaryFaint: string;
-    backgroundMid: string;
-    backgroundCard: string;
-    backgroundOverlay: string;
-    gradientBg: readonly [string, string, string];
-    gradientOverlay: readonly [string, string, string];
-    text: string;
-    textMuted: string;
-    textDim: string;
-    border: string;
-    borderStrong: string;
+    primary: ThemeColor;
+    onPrimary: ThemeColor;
+    danger: ThemeColor;
+    rating: ThemeColor;
+    background: ThemeColor;
+    primaryCard: ThemeColor;
+    primaryDark: ThemeColor;
+    primaryMuted: ThemeColor;
+    primaryBorder: ThemeColor;
+    primarySurface: ThemeColor;
+    primarySubtle: ThemeColor;
+    primaryGhost: ThemeColor;
+    primaryFaint: ThemeColor;
+    backgroundMid: ThemeColor;
+    backgroundCard: ThemeColor;
+    backgroundOverlay: ThemeColor;
+    gradientBg: readonly [ThemeColor, ThemeColor, ThemeColor];
+    gradientOverlay: readonly [ThemeColor, ThemeColor, ThemeColor];
+    text: ThemeColor;
+    textMuted: ThemeColor;
+    textDim: ThemeColor;
+    border: ThemeColor;
+    borderStrong: ThemeColor;
 };
 
-export const Colors: AppColors = {
-    primary: ACCENT,
-    background: BACKGROUND,
-    primaryDark: '#0066CC',
-    primaryMuted: ACCENT + '33',
-    primaryBorder: ACCENT + '4D',
-    primarySurface: ACCENT + '1A',
-    primaryCard: CARD,
-    primarySubtle: SECONDARY_CARD,
-    primaryGhost: '#FFFFFF0D',
-    primaryFaint: '#FFFFFF08',
-    backgroundMid: '#000000CC',
-    backgroundCard: CARD,
-    backgroundOverlay: '#00000080',
-    gradientBg: [BACKGROUND, '#101014', BACKGROUND] as const,
-    gradientOverlay: ['transparent', '#00000080', '#000000EB'] as const,
-    text: '#ffffff',
-    textMuted: '#EBEBF599',
-    textDim: '#8E8E93',
-    border: '#38383A',
-    borderStrong: '#636366',
+const systemColor = (
+    ios: ColorValue,
+    android: ColorValue,
+    webLight: string,
+    webDark: string,
+    scheme: 'light' | 'dark',
+): ThemeColor => Platform.select({
+    ios,
+    android,
+    default: scheme === 'dark' ? webDark : webLight,
+}) as ThemeColor;
+
+const createColors = (scheme: 'light' | 'dark'): AppColors => {
+    const background = systemColor(Color.ios.systemGroupedBackground, Color.android.dynamic.surface, 'Canvas', 'Canvas', scheme);
+    const card = systemColor(Color.ios.secondarySystemGroupedBackground, Color.android.dynamic.surfaceContainerLow, 'Canvas', 'Canvas', scheme);
+    const secondaryCard = systemColor(Color.ios.tertiarySystemBackground, Color.android.dynamic.surfaceContainer, 'ButtonFace', 'ButtonFace', scheme);
+    const text = systemColor(Color.ios.label, Color.android.dynamic.onSurface, 'CanvasText', 'CanvasText', scheme);
+    const textMuted = systemColor(Color.ios.secondaryLabel, Color.android.dynamic.onSurfaceVariant, 'GrayText', 'GrayText', scheme);
+    const textDim = systemColor(Color.ios.tertiaryLabel, Color.android.dynamic.onSurfaceVariant, 'GrayText', 'GrayText', scheme);
+    const border = systemColor(Color.ios.separator, Color.android.dynamic.outlineVariant, 'GrayText', 'GrayText', scheme);
+    const primary = text;
+
+    return {
+        primary,
+        onPrimary: systemColor(Color.ios.systemBackground, Color.android.dynamic.surface, 'Canvas', 'Canvas', scheme),
+        danger: systemColor(Color.ios.systemRed, Color.android.dynamic.error, 'MarkText', 'MarkText', scheme),
+        rating: systemColor(Color.ios.systemYellow, Color.android.dynamic.tertiary, 'Mark', 'Mark', scheme),
+        background,
+        primaryCard: card,
+        primaryDark: primary,
+        primaryMuted: systemColor(Color.ios.secondarySystemFill, Color.android.dynamic.secondaryContainer, 'ButtonFace', 'ButtonFace', scheme),
+        primaryBorder: border,
+        primarySurface: systemColor(Color.ios.secondarySystemGroupedBackground, Color.android.dynamic.surfaceVariant, 'ButtonFace', 'ButtonFace', scheme),
+        primarySubtle: secondaryCard,
+        primaryGhost: systemColor(Color.ios.quaternarySystemFill, Color.android.dynamic.surfaceContainerLow, 'ButtonFace', 'ButtonFace', scheme),
+        primaryFaint: systemColor(Color.ios.tertiarySystemFill, Color.android.dynamic.surfaceContainerLowest, 'ButtonFace', 'ButtonFace', scheme),
+        backgroundMid: card,
+        backgroundCard: card,
+        backgroundOverlay: secondaryCard,
+        gradientBg: [background, card, background],
+        gradientOverlay: ['transparent', secondaryCard, background],
+        text,
+        textMuted,
+        textDim,
+        border,
+        borderStrong: systemColor(Color.ios.opaqueSeparator, Color.android.dynamic.outline, 'GrayText', 'GrayText', scheme),
+    };
 };
+
+export const LightColors = createColors('light');
+export const DarkColors = createColors('dark');
+export const Colors = LightColors;
+export const systemDarkBackground = DarkColors.background;
 
 export const spacing = {
     xs: 4,

@@ -1,15 +1,17 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, Platform, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from './ThemeContext';
+import type { ThemeColor } from './theme';
 
 interface MenuAction {
     id: string;
     title: string;
     icon?: React.ComponentProps<typeof Ionicons>['name'];
-    iconColor?: string;
+    iconColor?: ThemeColor;
     subtitle?: string;
     state?: 'on';
-    titleColor?: string;
+    titleColor?: ThemeColor;
 }
 
 interface WebMenuProps {
@@ -29,6 +31,7 @@ export const WebMenu: React.FC<WebMenuProps> = ({
     onCloseMenu,
     children,
 }) => {
+    const { colors } = useTheme();
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<View | any>(null);
     const triggerRef = useRef<View | any>(null);
@@ -114,23 +117,24 @@ export const WebMenu: React.FC<WebMenuProps> = ({
                     style={[
                         styles.menu,
                         {
+                            backgroundColor: colors.primaryCard,
                             opacity: fadeAnim,
                             transform: [{ scale: scaleAnim }],
                         },
                     ]}
                     pointerEvents="auto"
                 >
-                    <View style={styles.menuContent}>
+                    <View style={[styles.menuContent, { backgroundColor: colors.primaryCard }]}>
                         <View style={styles.menuHeader}>
-                            <Text style={styles.menuTitle}>{title}</Text>
+                            <Text style={[styles.menuTitle, { color: colors.textMuted }]}>{title}</Text>
                         </View>
 
-                        <View style={styles.menuDivider} />
+                        <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
 
                         {actions.map((action, index) => (
                             <View key={action.id}>
                                 <TouchableOpacity
-                                    style={styles.menuItem}
+                                    style={[styles.menuItem, { backgroundColor: colors.primaryCard }]}
                                     onPress={() => handleActionPress(action.id)}
                                     activeOpacity={0.6}
                                 >
@@ -139,26 +143,26 @@ export const WebMenu: React.FC<WebMenuProps> = ({
                                             <Ionicons
                                                 name={action.icon}
                                                 size={18}
-                                                color={action.iconColor || action.titleColor || '#FFFFFF'}
+                                                color={action.iconColor || action.titleColor || colors.text}
                                                 style={styles.menuItemIcon}
                                             />
                                         ) : null}
                                         <Text
                                             style={[
                                                 styles.menuItemTitle,
-                                                { color: action.titleColor || '#FFFFFF' },
+                                                { color: action.titleColor || colors.text },
                                                 action.state === 'on' && styles.menuItemSelected,
                                             ]}
                                         >
                                             {action.title}
                                         </Text>
                                         {action.subtitle && (
-                                            <Text style={styles.menuItemSubtitle}>{action.subtitle}</Text>
+                                            <Text style={[styles.menuItemSubtitle, { color: colors.textMuted }]}>{action.subtitle}</Text>
                                         )}
                                     </View>
-                                    {action.state === 'on' && <View style={styles.checkmark} />}
+                                    {action.state === 'on' && <View style={[styles.checkmark, { backgroundColor: colors.primary }]} />}
                                 </TouchableOpacity>
-                                {index < actions.length - 1 && <View style={styles.itemDivider} />}
+                                {index < actions.length - 1 && <View style={[styles.itemDivider, { backgroundColor: colors.border }]} />}
                             </View>
                         ))}
                     </View>
@@ -178,7 +182,6 @@ const styles = StyleSheet.create({
         top: '100%',
         right: 0,
         marginTop: 8,
-        backgroundColor: '#1c1c1e',
         borderRadius: 12,
         overflow: 'hidden',
         minWidth: 200,
@@ -191,7 +194,6 @@ const styles = StyleSheet.create({
         zIndex: 9999,
     },
     menuContent: {
-        backgroundColor: '#1c1c1e',
     },
     menuHeader: {
         paddingHorizontal: 16,
@@ -200,13 +202,11 @@ const styles = StyleSheet.create({
     menuTitle: {
         fontSize: 13,
         fontWeight: '600',
-        color: '#999',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     menuDivider: {
         height: 1,
-        backgroundColor: '#3a3a3c',
     },
     menuItem: {
         paddingHorizontal: 16,
@@ -214,7 +214,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#1c1c1e',
         cursor: 'pointer' as any,
     },
     menuItemContent: {
@@ -226,7 +225,6 @@ const styles = StyleSheet.create({
     menuItemIcon: { width: 20 },
     menuItemTitle: {
         fontSize: 16,
-        color: '#FFFFFF',
         fontWeight: '500',
     },
     menuItemSelected: {
@@ -234,18 +232,15 @@ const styles = StyleSheet.create({
     },
     menuItemSubtitle: {
         fontSize: 12,
-        color: '#8e8e93',
         marginTop: 4,
     },
     itemDivider: {
         height: 1,
-        backgroundColor: '#3a3a3c',
     },
     checkmark: {
         width: 20,
         height: 20,
         borderRadius: 10,
-        backgroundColor: '#007AFF',
         marginLeft: 12,
         justifyContent: 'center',
         alignItems: 'center',

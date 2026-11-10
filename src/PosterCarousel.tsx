@@ -35,6 +35,12 @@ export interface PosterCarouselProps {
     topInset?: number;
 }
 
+const posterImageGradient = [
+    'transparent',
+    'rgba(0, 0, 0, 0.12)',
+    'rgba(0, 0, 0, 0.76)',
+] as const;
+
 export default function AppleTVCarousel({
     apiKey,
     filter = 'all',
@@ -162,6 +168,22 @@ export default function AppleTVCarousel({
         }
     }, [data.length]);
 
+    const renderPaginationDot = useCallback((index: number) => (
+        <Pressable
+            key={`dot-${index}`}
+            accessibilityRole="button"
+            accessibilityLabel={`Go to slide ${index + 1}`}
+            accessibilityState={{ selected: activeIndex === index }}
+            hitSlop={8}
+            style={[
+                styles.paginationDot,
+                { backgroundColor: 'rgba(255, 255, 255, 0.68)' },
+                activeIndex === index && { backgroundColor: '#FFFFFF', width: 12 },
+            ]}
+            onPress={() => scrollToIndex(index)}
+        />
+    ), [activeIndex, scrollToIndex]);
+
     const renderCarouselItem = useCallback((item: CarouselItem, index: number) => {
         const dims = responsiveDims;
         return (
@@ -210,7 +232,10 @@ export default function AppleTVCarousel({
                             />
                         )}
                         <LinearGradient
-                            colors={colors.gradientOverlay as any}
+                            colors={posterImageGradient}
+                            locations={[0, 0.58, 1]}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 0, y: 1 }}
                             style={styles.gradient}
                         />
                         <Animated.View
@@ -220,6 +245,7 @@ export default function AppleTVCarousel({
                                     paddingHorizontal: dims.contentPadding,
                                     paddingBottom: dims.bottomPadding,
                                     flexDirection: 'row',
+                                    width: '100%',
                                     opacity: activeIndex === index ? 1 : 0,
                                     transitionProperty: 'opacity',
                                     transitionDuration: reducedMotion ? '120ms' : '180ms',
@@ -228,20 +254,29 @@ export default function AppleTVCarousel({
                             ]}
                         >
                             <View style={[styles.textContainer, { flex: 1 }]}>
-                                <Text style={[styles.title, { fontSize: dims.titleSize, color: colors.text }]} numberOfLines={1}>
+                                <Text style={[styles.title, { fontSize: dims.titleSize, color: '#FFFFFF' }]} numberOfLines={1}>
                                     {item.title}
                                 </Text>
                                 {item.subtitle && (
-                                    <Text style={[styles.subtitle, { fontSize: dims.subtitleSize, color: colors.textMuted }]} numberOfLines={2}>
+                                    <Text style={[styles.subtitle, { fontSize: dims.subtitleSize, color: '#FFFFFF' }]} numberOfLines={2}>
                                         {item.subtitle}
                                     </Text>
                                 )}
-                                <View style={[styles.metaContainer, { flexDirection: 'row', alignItems: isLandscape ? 'flex-start' : 'center', gap: isLandscape ? 8 : 0 }]}>
-                                    <Text style={[styles.metaText, { fontSize: isLandscape ? 12 : 14, color: colors.text }]}>
+                                <View style={styles.metaContainer}>
+                                    <Text style={[styles.metaText, { fontSize: isLandscape ? 12 : 14, color: '#FFFFFF' }]} numberOfLines={1}>
                                         ★ {item.rating}   {item.year}
                                     </Text>
-                                    <View style={[styles.typeIndicator, { backgroundColor: colors.primaryMuted, borderColor: colors.primaryBorder }]}>
-                                        <Text style={[styles.typeText, { fontSize: isLandscape ? 10 : 12, color: colors.text }]}>
+                                    {data.length > 1 && (
+                                        <View pointerEvents="box-none" style={styles.paginationPosition}>
+                                            <BlurView intensity={20} tint="dark" style={styles.paginationBlur}>
+                                                <View style={styles.paginationDots}>
+                                                    {data.map((_, dotIndex) => renderPaginationDot(dotIndex))}
+                                                </View>
+                                            </BlurView>
+                                        </View>
+                                    )}
+                                    <View style={styles.typeIndicator}>
+                                        <Text style={[styles.typeText, { fontSize: isLandscape ? 10 : 12, color: '#FFFFFF' }]}>
                                             {item.type === 'movie' ? 'MOVIE' : 'SERIES'}
                                         </Text>
                                     </View>
@@ -252,23 +287,7 @@ export default function AppleTVCarousel({
                 </Pressable>
             </View>
         );
-    }, [activeIndex, colors.gradientOverlay, colors.primaryBorder, colors.primaryMuted, colors.text, colors.textMuted, isLandscape, handleItemPress, itemWidth, reducedMotion, responsiveDims, topInset]);
-
-    const renderPaginationDot = useCallback((index: number) => (
-        <Pressable
-            key={`dot-${index}`}
-            accessibilityRole="button"
-            accessibilityLabel={`Go to slide ${index + 1}`}
-            accessibilityState={{ selected: activeIndex === index }}
-            hitSlop={8}
-            style={[
-                styles.paginationDot,
-                { backgroundColor: colors.primaryMuted },
-                activeIndex === index && { backgroundColor: colors.primary, width: 12 },
-            ]}
-            onPress={() => scrollToIndex(index)}
-        />
-    ), [activeIndex, colors.primary, colors.primaryMuted, scrollToIndex]);
+    }, [activeIndex, data, isLandscape, handleItemPress, itemWidth, reducedMotion, renderPaginationDot, responsiveDims, topInset]);
 
     if (loading || !data.length) {
         return (
@@ -294,15 +313,6 @@ export default function AppleTVCarousel({
                 onIndexChange={handleIndexChange}
                 style={{ width: itemWidth, height: carouselHeight }}
             />
-            {data.length > 1 && (
-                <View style={styles.paginationContainer}>
-                    <BlurView intensity={20} style={styles.paginationBlur}>
-                        <View style={styles.paginationDots}>
-                            {data.map((_, index) => renderPaginationDot(index))}
-                        </View>
-                    </BlurView>
-                </View>
-            )}
         </View>
     );
 }
@@ -317,13 +327,19 @@ const styles = StyleSheet.create({
     textContainer: { justifyContent: 'flex-end', paddingBottom: 10 },
     title: { fontWeight: '700', marginBottom: 6, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
     subtitle: { lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2, maxWidth: 600 },
-    metaContainer: { justifyContent: 'space-between', marginTop: 10 },
+    metaContainer: { position: 'relative', width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
     metaText: { fontWeight: '500' },
-    typeIndicator: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1 },
+    typeIndicator: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(0, 0, 0, 0.72)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' },
     typeText: { fontWeight: '600', letterSpacing: 1 },
     loadingContainer: { justifyContent: 'center', alignItems: 'center' },
-    paginationContainer: { position: 'absolute', zIndex: 2, left: 0, right: 0, bottom: 12, alignItems: 'center' },
-    paginationBlur: { borderRadius: 20, overflow: 'hidden', paddingHorizontal: 8, paddingVertical: 8 },
-    paginationDots: { flexDirection: 'row', alignItems: 'center' },
-    paginationDot: { width: 8, height: 8, borderRadius: 4, marginHorizontal: 4 },
+    paginationBlur: {
+        borderRadius: 20,
+        overflow: 'hidden',
+        paddingHorizontal: 6,
+        paddingVertical: 6,
+        backgroundColor: 'rgba(0, 0, 0, 0.38)',
+    },
+    paginationPosition: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
+    paginationDots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+    paginationDot: { width: 6, height: 6, borderRadius: 3 },
 });

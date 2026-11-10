@@ -3,6 +3,8 @@ import { Children, isValidElement } from 'react';
 import { Text as RNText, View } from 'react-native';
 import { FieldGroup, Host, ListItem, RNHostView, Text as NativeText } from '@expo/ui';
 import { fillMaxWidth } from '@expo/ui/jetpack-compose/modifiers';
+import { useTheme } from './ThemeContext';
+import type { ThemeColor } from './theme';
 
 interface SettingsPageProps {
   children: ReactNode;
@@ -12,8 +14,10 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({ children, onRefresh }: SettingsPageProps) {
+  const { colorScheme } = useTheme();
+
   return (
-    <Host style={{ flex: 1 }} colorScheme="dark">
+    <Host style={{ flex: 1 }} colorScheme={colorScheme}>
       <FieldGroup>
         {onRefresh ? (
           <FieldGroup.Section title="Refresh">
@@ -67,9 +71,9 @@ interface SettingsRowProps {
   accessibilityLabel?: string;
   selected?: boolean;
   disabled?: boolean;
-  titleColor?: string;
+  titleColor?: ThemeColor;
   detailSameFont?: boolean;
-  detailColor?: string;
+  detailColor?: ThemeColor;
 }
 
 export function SettingsRow({
@@ -86,9 +90,10 @@ export function SettingsRow({
   detailSameFont = false,
   detailColor,
 }: SettingsRowProps) {
+  const { colors } = useTheme();
   const detailTextStyle = {
     ...(detailSameFont ? { fontSize: 16 as const, fontWeight: '400' as const } : {}),
-    ...(detailColor ? { color: detailColor } : {}),
+    color: detailColor ?? colors.textMuted,
   };
 
   const titleContent = titleAccessory ? (
@@ -97,7 +102,7 @@ export function SettingsRow({
         <RNText
           numberOfLines={1}
           style={{
-            color: destructive ? '#ff453a' : disabled ? '#8e8e93' : titleColor ?? '#f2f2f7',
+            color: destructive ? colors.danger : disabled ? colors.textDim : titleColor ?? colors.text,
             fontSize: 16,
           }}
         >
@@ -109,7 +114,7 @@ export function SettingsRow({
   ) : (
     <NativeText
       textStyle={{
-        color: destructive ? '#ff453a' : disabled ? '#8e8e93' : titleColor,
+        color: destructive ? colors.danger : disabled ? colors.textDim : titleColor ?? colors.text,
       }}
     >
       {title}

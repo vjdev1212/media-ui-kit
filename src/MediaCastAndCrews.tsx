@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from "react";
 import { StyleSheet, Image, FlatList, useWindowDimensions } from "react-native";
 import { View, Text } from "./Themed";
 import { useTheme } from './ThemeContext';
-import { spacing as themeSpacing, typography } from './theme';
+import { spacing as themeSpacing, typography, type ThemeColor } from './theme';
 import { NativeButton } from './NativeUiControls';
 
 const IMAGE_BASE_URL = "https://image.tmdb.org/t/p/w342";
@@ -36,11 +36,10 @@ interface CastListItemProps {
   };
   onSelectPerson: (personId: number) => void;
   avatarSize: number;
-  textColor: string;
-  mutedTextColor: string;
-  cardColor: string;
-  borderColor: string;
-  accentColor: string;
+  textColor: ThemeColor;
+  mutedTextColor: ThemeColor;
+  cardColor: ThemeColor;
+  borderColor: ThemeColor;
 }
 
 const CastListItem = React.memo(({
@@ -51,12 +50,10 @@ const CastListItem = React.memo(({
   mutedTextColor,
   cardColor,
   borderColor,
-  accentColor,
 }: CastListItemProps) => (
   <NativeButton
     variant="text"
     accessibilityLabel={`View ${item.name}'s profile`}
-    seedColor={accentColor}
     onPress={() => onSelectPerson(item.id)}
     style={[styles.avatarContainer, { width: avatarSize + 20 }]}
   >
@@ -69,7 +66,7 @@ const CastListItem = React.memo(({
             <Text style={[styles.initials, { color: textColor, fontSize: avatarSize * 0.3 }]}>{item.initials}</Text>
           </View>
         )}
-        <View style={[styles.avatarBorder, { width: avatarSize + 4, height: avatarSize + 4, borderRadius: (avatarSize + 4) / 2 }]} />
+        <View style={[styles.avatarBorder, { width: avatarSize + 4, height: avatarSize + 4, borderRadius: (avatarSize + 4) / 2, borderColor }]} />
       </View>
       <View style={styles.textContainer}>
         <Text style={[styles.name, { color: textColor, fontSize: Math.max(13, avatarSize * 0.12) }]} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
@@ -127,7 +124,6 @@ const MediaCastAndCrews: React.FC<MediaCastAndCrewsProps> = ({ cast, onPersonPre
       mutedTextColor={colors.textMuted}
       cardColor={colors.backgroundCard}
       borderColor={colors.border}
-      accentColor={colors.primary}
     />
   ), [avatarSize, colors.backgroundCard, colors.border, colors.primary, colors.text, colors.textMuted, onPersonPress]);
 
@@ -164,7 +160,7 @@ const styles = StyleSheet.create({
   avatarWrapper: { position: 'relative', marginBottom: 12 },
   avatar: {},
   placeholderAvatar: { justifyContent: "center", alignItems: "center", borderWidth: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
-  avatarBorder: { position: 'absolute', top: -2, left: -2, borderWidth: 0.5, borderColor: 'rgba(255,255,255,0.1)' },
+  avatarBorder: { position: 'absolute', top: -2, left: -2, borderWidth: 0.5 },
   initials: { fontWeight: '600', letterSpacing: 1 },
   textContainer: { alignItems: "center", width: "100%", gap: 2 },
   name: { fontWeight: '500', textAlign: "center", lineHeight: 16 },

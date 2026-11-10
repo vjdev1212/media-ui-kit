@@ -26,7 +26,7 @@ const CARD_GAP = spacing.md;
 const getCardWidth = (screenWidth: number, screenHeight: number) => screenHeight > screenWidth ? 210 : 240;
 
 const EpisodeItem: React.FC<EpisodeItemProps> = React.memo(({ item, onEpisodeSelect, cardWidth }) => {
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [imgError, setImgError] = useState(false);
   const [scaleAnim] = useState(() => new Animated.Value(1));
@@ -90,7 +90,7 @@ const EpisodeItem: React.FC<EpisodeItemProps> = React.memo(({ item, onEpisodeSel
 });
 
 const SeasonEpisodeList: React.FC<SeasonEpisodeListProps> = ({ videos, onEpisodeSelect }) => {
-  const { colors } = useTheme();
+  const { colors, colorScheme } = useTheme();
   const [selectedSeason, setSelectedSeason] = useState<number>(1);
   const { width, height } = useWindowDimensions();
   const menuRef = useRef<MenuComponentRef>(null);
@@ -115,9 +115,8 @@ const SeasonEpisodeList: React.FC<SeasonEpisodeListProps> = ({ videos, onEpisode
   const menuActions = useMemo(() => seasonData.map(season => ({
     id: `season-${season}`,
     title: season === 0 ? 'Specials' : `Season ${season}`,
-    titleColor: selectedSeason === season ? colors.primary : '#ffffff',
     state: selectedSeason === season ? ('on' as const) : undefined,
-  })), [colors.primary, seasonData, selectedSeason]);
+  })), [seasonData, selectedSeason]);
 
   const webMenuItems = useMemo(() => seasonData.map((season, index) => ({
     id: `season-${season}-${index}`,
@@ -166,7 +165,7 @@ const SeasonEpisodeList: React.FC<SeasonEpisodeListProps> = ({ videos, onEpisode
             <CustomContextMenu visible={webMenuVisible} onClose={() => setWebMenuVisible(false)} items={webMenuItems} selectedItem={selectedSeason} onItemSelect={handleWebContextMenuItemSelect} anchorPosition={anchorPosition} />
           </>
         ) : (
-          <MenuView ref={menuRef} onPressAction={handleMenuPress} actions={menuActions} shouldOpenOnLongPress={false} colorScheme="dark">
+          <MenuView ref={menuRef} onPressAction={handleMenuPress} actions={menuActions} shouldOpenOnLongPress={false} colorScheme={colorScheme}>
             <TouchableOpacity style={styles.seasonDropdownButton}>
               <Text style={[styles.seasonDropdownText, { color: colors.text }]}>{getCurrentSeasonText()}</Text>
               <Ionicons name='chevron-expand' size={24} color={colors.text} />

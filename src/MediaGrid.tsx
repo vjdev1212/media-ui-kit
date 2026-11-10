@@ -118,7 +118,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
     onAddToWatchlist,
     onActionError,
 }) => {
-    const { colors } = useTheme();
+    const { colors, colorScheme } = useTheme();
     const { width } = useWindowDimensions();
     const insets = useSafeAreaInsets();
     const [data, setData] = useState<MediaGridItem[]>([]);
@@ -262,7 +262,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                 title={item.name}
                 actions={menuActions}
                 shouldOpenOnLongPress={false}
-                colorScheme="dark"
+                colorScheme={colorScheme}
                 onPressAction={({ nativeEvent }) => void handleMenuAction(nativeEvent.event, item)}
             >
                 {menuButton}
@@ -312,7 +312,6 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                         {metadata && (
                             <NativeText textStyle={{
                                 ...(compact ? styles.compactMediaMetadata : styles.mediaMetadata),
-                                color: `${colors.text}CC`,
                             }}>
                                 {metadata}
                             </NativeText>
@@ -320,7 +319,6 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                         {yearOnSeparateLine && year && (
                             <NativeText textStyle={{
                                 ...(compact ? styles.compactMediaMetadata : styles.mediaMetadata),
-                                color: `${colors.text}CC`,
                             }}>
                                 {year}
                             </NativeText>
@@ -328,7 +326,6 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                         {secondaryMetadata && (
                             <NativeText textStyle={{
                                 ...(compact ? styles.compactMediaMetadata : styles.mediaMetadata),
-                                color: `${colors.text}CC`,
                             }}>
                                 {secondaryMetadata}
                             </NativeText>
@@ -358,6 +355,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                 <RNHostView matchContents>
                     <RNView style={[
                         styles.divider,
+                        { backgroundColor: colors.border },
                         compact
                             ? { width: rowWidth - rowHorizontalPadding * 2, marginHorizontal: rowHorizontalPadding }
                             : { width: rowWidth },
@@ -367,6 +365,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         );
     }, [
         colors.backgroundOverlay,
+        colors.border,
         colors.textDim,
         compact,
         detailsPath,
@@ -450,7 +449,6 @@ const styles = StyleSheet.create({
     },
     divider: {
         height: StyleSheet.hairlineWidth,
-        backgroundColor: 'rgba(255,255,255,0.12)',
     },
     menuButton: {
         width: 40,

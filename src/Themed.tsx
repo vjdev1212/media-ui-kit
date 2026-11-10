@@ -48,7 +48,8 @@ export function View(props: ViewProps) {
 }
 
 export function StatusBar(props: StatusBarProps) {
-  return <DefaultStatusBar {...props} style="light" />;
+  const { colorScheme } = useTheme();
+  return <DefaultStatusBar {...props} style={colorScheme === 'dark' ? 'light' : 'dark'} />;
 }
 
 export function Card(props: ViewProps) {

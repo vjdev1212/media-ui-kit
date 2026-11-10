@@ -1,10 +1,11 @@
 import React from 'react';
 import { BottomSheet, Host } from '@expo/ui';
+import type { ColorValue } from 'react-native';
 
 interface PersonDetailsSheetProps {
   visible: boolean;
   onClose: () => void;
-  backgroundColor: string;
+  backgroundColor: ColorValue;
   children: React.ReactElement;
 }
 

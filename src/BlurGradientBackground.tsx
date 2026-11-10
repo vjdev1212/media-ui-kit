@@ -1,13 +1,12 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, type ColorValue } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from './ThemeContext';
-import { systemDarkBackground } from './theme';
 
 interface BlurGradientBackgroundProps {
     intensity?: number;
     tint?: 'light' | 'dark' | 'default';
-    colors?: string[];
+    colors?: readonly [Exclude<ColorValue, null>, Exclude<ColorValue, null>, ...Exclude<ColorValue, null>[]];
     start?: { x: number; y: number };
     end?: { x: number; y: number };
     borderRadius?: number;
@@ -36,7 +35,7 @@ export default function BlurGradientBackground({
             ]}
         >           
             <LinearGradient
-                colors={[systemDarkBackground, systemDarkBackground, systemDarkBackground]}
+                colors={gradientColors}
                 start={start}
                 end={end}
                 style={StyleSheet.absoluteFill}

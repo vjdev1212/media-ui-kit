@@ -19,7 +19,6 @@ interface MediaContentDetailsListProps {
 
 const UNKNOWN_TEXT = 'Unknown';
 const NOT_RATED_TEXT = 'Not Rated';
-const STAR_COLOR = '#E6BD37';
 const STAR_SIZE = 14;
 const containerMargin = spacing.mdLg;
 
@@ -65,7 +64,7 @@ const MediaContentDetailsList: React.FC<MediaContentDetailsListProps> = ({
   const renderRatingValue = () => (
     <View style={styles.ratingContainer}>
       <Text style={[styles.value, { color: colors.text }]}>{computedValues.ratingText}</Text>
-      {computedValues.hasRating && <View style={styles.starWrapper}><FontAwesome name="star" size={STAR_SIZE} color={STAR_COLOR} /></View>}
+      {computedValues.hasRating && <View style={styles.starWrapper}><FontAwesome name="star" size={STAR_SIZE} color={colors.rating} /></View>}
     </View>
   );
 

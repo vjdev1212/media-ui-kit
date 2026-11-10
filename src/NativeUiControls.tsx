@@ -16,6 +16,7 @@ import type {
   UniversalStyle,
   UniversalTextStyle,
 } from '@expo/ui';
+import { useTheme } from './ThemeContext';
 
 interface NativeButtonProps {
   label?: string;
@@ -36,8 +37,10 @@ export function NativeButton({
   variant = 'filled',
   style,
   accessibilityLabel,
-  seedColor = '#007aff',
+  seedColor,
 }: NativeButtonProps) {
+  const { colorScheme } = useTheme();
+
   if (children) {
     return (
       <Pressable
@@ -58,7 +61,7 @@ export function NativeButton({
   return (
     <Host
       matchContents
-      colorScheme="dark"
+      colorScheme={colorScheme}
       seedColor={seedColor}
       style={style}
       accessibilityLabel={accessibilityLabel}
@@ -104,8 +107,9 @@ export function NativeSelect<T extends string | number>({
   style,
   enabled = true,
 }: NativeSelectProps<T>) {
+  const { colorScheme } = useTheme();
   return (
-    <Host matchContents colorScheme="dark" seedColor="#007aff" style={style}>
+    <Host matchContents colorScheme={colorScheme} style={style}>
       <Picker
         selectedValue={selectedValue}
         onValueChange={onValueChange}
@@ -130,10 +134,11 @@ export function NativeSwitch({
   label,
   disabled,
   style,
-  seedColor = '#007aff',
+  seedColor,
 }: NativeSwitchProps) {
+  const { colorScheme } = useTheme();
   return (
-    <Host matchContents colorScheme="dark" seedColor={seedColor} style={style}>
+    <Host matchContents colorScheme={colorScheme} seedColor={seedColor} style={style}>
       <Switch
         value={value}
         onValueChange={onValueChange}
@@ -160,9 +165,10 @@ export function NativeTextInput({
   inputStyle,
   textStyle,
   accessibilityLabel,
-  seedColor = '#007aff',
+  seedColor,
   ...props
 }: NativeTextInputProps) {
+  const { colorScheme } = useTheme();
   const nativeValue = useNativeState(value);
 
   useEffect(() => {
@@ -172,7 +178,7 @@ export function NativeTextInput({
   return (
     <Host
       matchContents
-      colorScheme="dark"
+      colorScheme={colorScheme}
       seedColor={seedColor}
       style={style}
       accessibilityLabel={accessibilityLabel}

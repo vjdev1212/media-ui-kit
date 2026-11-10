@@ -4,14 +4,22 @@ import { StyleSheet } from 'react-native';
 import { Text } from './Themed';
 import { NativeButton } from './NativeUiControls';
 import { radius, spacing, typography } from './theme';
+import { useTheme } from './ThemeContext';
 
-const PlayButton = ({ onPress }: { onPress: () => void }) => (
-  <NativeButton variant="filled" style={styles.button} onPress={onPress} seedColor="#ffffff">
-    <Ionicons name="play-outline" size={24} color="#000000" style={styles.icon} />
-    <Text style={styles.text}>Watch Now</Text>
-  </NativeButton>
-);
+const PlayButton = ({ onPress }: { onPress: () => void }) => {
+  const { colors } = useTheme();
 
+  return (
+    <NativeButton
+      variant="filled"
+      style={[styles.button, { backgroundColor: colors.primary }]}
+      onPress={onPress}
+    >
+      <Ionicons name="play-outline" size={24} color={colors.onPrimary} style={styles.icon} />
+      <Text style={[styles.text, { color: colors.onPrimary }]}>Watch Now</Text>
+    </NativeButton>
+  );
+};
 const styles = StyleSheet.create({
   button: {
     minHeight: 50,
@@ -24,11 +32,9 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
   },
   text: {
     ...typography.headline,
-    color: '#000000',
   },
   icon: {
     marginRight: 8,

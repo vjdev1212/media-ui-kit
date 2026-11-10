@@ -36,9 +36,10 @@ export default function LibraryButton({
   service,
   onPressFeedback,
   size = 28,
-  color = '#fff',
+  color,
 }: LibraryButtonProps) {
   const { colors } = useTheme();
+  const iconColor = color ?? colors.text;
   const [isInLibrary, setIsInLibrary] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -82,11 +83,10 @@ export default function LibraryButton({
         isInLibrary && { backgroundColor: colors.primaryMuted, opacity: 0.5 },
       ]}
       disabled={loading}
-      seedColor={colors.primary}
     >
       {loading
-        ? <ActivityIndicator size="small" color={color} />
-        : <Ionicons name={isInLibrary ? 'bookmark' : 'bookmark-outline'} size={size} color={color} />
+        ? <ActivityIndicator size="small" color={iconColor} />
+        : <Ionicons name={isInLibrary ? 'bookmark' : 'bookmark-outline'} size={size} color={iconColor} />
       }
     </NativeButton>
   );

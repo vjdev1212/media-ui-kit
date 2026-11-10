@@ -27,7 +27,7 @@ const MediaContentDescription: React.FC<MediaContentDescriptionProps> = ({ descr
 
   return (
     <View style={styles.container}>
-      <NativeButton variant="text" onPress={toggleExpand} seedColor={colors.primary}>
+      <NativeButton variant="text" onPress={toggleExpand}>
         <Text style={styles.description} numberOfLines={expanded ? undefined : 3}>{description}</Text>
         {description.split(' ').length > 20 && (
           <Text style={[styles.moreText, { color: colors.textMuted }]}>{expanded ? 'LESS' : 'MORE'}</Text>

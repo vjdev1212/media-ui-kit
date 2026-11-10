@@ -14,9 +14,11 @@ interface WatchTrailerButtonProps {
 const WatchTrailerButton: React.FC<WatchTrailerButtonProps> = ({
     trailerKey,
     size = 28,
-    color = '#fff'
+    color,
 }) => {
     const { colors } = useTheme();
+    const iconColor = trailerKey ? color ?? colors.onPrimary : colors.textDim;
+
     const handlePress = async () => {
         if (!trailerKey) return;
         if (Platform.OS !== 'web') {
@@ -41,19 +43,18 @@ const WatchTrailerButton: React.FC<WatchTrailerButtonProps> = ({
             style={[
                 styles.button,
                 {
-                    backgroundColor: colors.primarySurface,
+                    backgroundColor: trailerKey ? colors.primary : colors.backgroundCard,
                     borderColor: colors.primaryBorder,
                 },
-                !trailerKey && { backgroundColor: colors.backgroundCard, opacity: 0.5 },
+                !trailerKey && { opacity: 0.5 },
             ]}
             onPress={handlePress}
             disabled={!trailerKey}
-            seedColor={colors.primary}
         >
             <Ionicons
                 name="logo-youtube"
                 size={size}
-                color={trailerKey ? colors.text : colors.textDim}
+                color={iconColor}
             />
         </NativeButton>
     );

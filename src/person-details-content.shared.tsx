@@ -67,7 +67,6 @@ const FilmographyItem = React.memo(function FilmographyItem({
     <NativeButton
       variant="text"
       accessibilityLabel={`Open ${title}`}
-      seedColor={colors.primary}
       onPress={() => onPress(item)}
       style={[styles.filmographyItem, { width: posterWidth }]}
     >
@@ -198,7 +197,6 @@ export default function PersonDetailsContent({
         label="Try again"
         accessibilityLabel="Retry loading profile"
         onPress={onRetry}
-        seedColor={colors.primary}
         style={styles.retryButton}
       />
     </View>

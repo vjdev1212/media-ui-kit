@@ -1,11 +1,6 @@
-export interface PersonColors {
-  primary: string;
-  background: string;
-  backgroundCard: string;
-  text: string;
-  textMuted: string;
-  border: string;
-}
+import type { AppColors } from './theme';
+
+export type PersonColors = Pick<AppColors, 'primary' | 'background' | 'backgroundCard' | 'text' | 'textMuted' | 'border'>;
 
 export interface Person {
   id: number;

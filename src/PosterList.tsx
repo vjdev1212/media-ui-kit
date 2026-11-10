@@ -20,6 +20,7 @@ import { useTheme } from './ThemeContext';
 import { NativeButton } from './NativeUiControls';
 import PosterArtwork from './PosterArtwork';
 import { spacing, typography } from './theme';
+import type { ThemeColor } from './theme';
 
 const EXPO_PUBLIC_TMDB_API_KEY = process.env.EXPO_PUBLIC_TMDB_API_KEY;
 
@@ -118,7 +119,6 @@ const PosterItem = React.memo(({
       variant="text"
       onPress={handlePress}
       style={{ width: posterWidth, height: cardHeight, flexShrink: 0 }}
-      seedColor={colors.primary}
     >
       {contents}
     </NativeButton>
@@ -129,7 +129,7 @@ const SkeletonPoster = React.memo(({ posterWidth, posterHeight, cardHeight, bgCo
   posterWidth: number;
   posterHeight: number;
   cardHeight: number;
-  bgColor: string;
+  bgColor: ThemeColor;
 }) => (
   <RNView style={{ width: posterWidth, height: cardHeight, flexShrink: 0 }}>
   <PosterArtwork style={{ width: posterWidth, height: posterHeight, backgroundColor: bgColor }} />
@@ -219,7 +219,9 @@ const PosterList = ({
   }, [apiUrl]);
 
   const handleSeeAllPress = useCallback(() => {
-    onSeeAllPress(apiUrl, `${type === 'movie' ? 'Movies' : 'Series'} - ${title}`, type);
+    const typeTitle = type === 'movie' ? 'Movies' : 'Series';
+    const pageTitle = title.startsWith(`${typeTitle} - `) ? title : `${typeTitle} - ${title}`;
+    onSeeAllPress(apiUrl, pageTitle, type);
   }, [apiUrl, onSeeAllPress, title, type]);
 
   const renderPosterItem = useCallback(({ item, index }: { item: PosterItemData; index: number }) => (
@@ -266,7 +268,7 @@ const PosterList = ({
     <RNView style={[styles.container, compact && styles.compactContainer]}>
       <RNView style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-        <NativeButton variant="text" onPress={handleSeeAllPress} style={styles.seeAllButton} seedColor={colors.primary}>
+        <NativeButton variant="text" onPress={handleSeeAllPress} style={styles.seeAllButton}>
           <Text style={[styles.seeAllText, { color: colors.textMuted }]}>See All</Text>
           <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={styles.chevronIcon} />
         </NativeButton>
@@ -296,7 +298,7 @@ const styles = StyleSheet.create({
   seeAllText: { fontSize: 15, fontWeight: '500', letterSpacing: -0.1 },
   chevronIcon: { marginLeft: 2 },
   posterTitle: { height: 20, marginTop: spacing.sm, ...typography.caption, fontWeight: '600' },
-  posterYear: { height: 18, marginTop: spacing.xs, ...typography.caption, color: '#8E8E93' },
+  posterYear: { height: 18, marginTop: spacing.xs, ...typography.caption },
 });
 
 export default React.memo(PosterList);

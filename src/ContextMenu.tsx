@@ -12,6 +12,7 @@ import {
   type TextStyle,
   Modal,
 } from 'react-native';
+import { useTheme } from './ThemeContext';
 
 interface AnchorPosition {
   x: number;
@@ -45,6 +46,7 @@ export default function ContextMenu<T extends ContextMenuItem = ContextMenuItem>
   onItemSelect,
   anchorPosition = { x: 0, y: 0 },
 }: ContextMenuProps<T>) {
+  const { colors } = useTheme();
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const slideAnim = useRef(new Animated.Value(-5)).current;
 
@@ -104,14 +106,17 @@ export default function ContextMenu<T extends ContextMenuItem = ContextMenuItem>
     return (
       <View style={styles.defaultItemContent}>
         <Text
-          style={[styles.itemText, isItemSelected(item) && styles.selectedText]}
+          style={[
+            styles.itemText,
+            { color: isItemSelected(item) ? colors.primary : colors.text },
+          ]}
           numberOfLines={1}
         >
           {displayText}
         </Text>
         {subtitle && (
           <Text
-            style={[styles.itemSubtitle, isItemSelected(item) && styles.selectedSubtitle]}
+            style={[styles.itemSubtitle, { color: colors.textMuted }]}
             numberOfLines={1}
           >
             {subtitle}
@@ -131,6 +136,8 @@ export default function ContextMenu<T extends ContextMenuItem = ContextMenuItem>
             style={[
               styles.contextMenu,
               {
+                backgroundColor: colors.primaryCard,
+                borderColor: colors.border,
                 left: anchorPosition.x,
                 top: anchorPosition.y,
                 width: menuWidth,
@@ -146,14 +153,14 @@ export default function ContextMenu<T extends ContextMenuItem = ContextMenuItem>
               {items.map((item, index) => (
                 <TouchableOpacity
                   key={item.id ?? index.toString()}
-                  style={[styles.menuItem, isItemSelected(item) && styles.selectedItem]}
+                  style={[styles.menuItem, isItemSelected(item) && { backgroundColor: colors.primarySurface }]}
                   onPress={() => handleItemPress(item)}
                   activeOpacity={0.9}
                 >
                   <View style={styles.itemContent}>{renderDefaultItem(item)}</View>
                   {isItemSelected(item) && (
-                    <View style={styles.checkmark}>
-                      <Text style={styles.checkmarkText}>✓</Text>
+                    <View style={[styles.checkmark, { backgroundColor: colors.primary }]}>
+                      <Text style={[styles.checkmarkText, { color: colors.onPrimary }]}>✓</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -173,12 +180,10 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   contextMenu: {
     position: 'absolute',
-    backgroundColor: '#1a1a1a',
     borderRadius: 12,
     paddingVertical: 8,
     minWidth: 180,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: '#3a3a3a',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -203,7 +208,6 @@ const styles = StyleSheet.create({
     minHeight: 44,
   } as ViewStyle,
   selectedItem: {
-    backgroundColor: '#535aff26',
   } as ViewStyle,
   itemContent: {
     flex: 1,
@@ -213,32 +217,24 @@ const styles = StyleSheet.create({
   } as ViewStyle,
   itemText: {
     fontSize: 16,
-    color: '#ffffff',
     fontWeight: '400',
   } as TextStyle,
   selectedText: {
-    color: '#535aff',
     fontWeight: '600',
   } as TextStyle,
   itemSubtitle: {
     fontSize: 13,
-    color: '#cccccc',
     marginTop: 2,
-  } as TextStyle,
-  selectedSubtitle: {
-    color: '#a0a4ff',
   } as TextStyle,
   checkmark: {
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#535aff',
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
   } as ViewStyle,
   checkmarkText: {
-    color: '#fff',
     fontSize: 12,
     fontWeight: 'bold',
   } as TextStyle,

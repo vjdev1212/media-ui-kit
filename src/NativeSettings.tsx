@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { Text } from './Themed';
 import { useTheme } from './ThemeContext';
-import { radius, spacing, systemDarkBackground, typography } from './theme';
+import { radius, spacing, typography } from './theme';
+import type { ThemeColor } from './theme';
 
 interface SettingsPageProps {
   children: ReactNode;
@@ -40,9 +41,7 @@ export function SettingsPage({ children, refreshControl, onRefresh, hideScrollIn
           progressBackgroundColor={colors.background}
         />
       ) : undefined)}
-      style={[styles.page, {
-        backgroundColor: systemDarkBackground,
-      }]}
+      style={[styles.page, { backgroundColor: colors.background }]}
       contentContainerStyle={styles.pageContent}
     >
       {children}
@@ -58,15 +57,16 @@ interface SettingsSectionProps {
 
 export function SettingsSection({ title, footer, children }: SettingsSectionProps) {
   const sectionChildren = Children.toArray(children);
+  const { colors } = useTheme();
 
   return (
     <View style={styles.section}>
-      {title ? <Text style={styles.sectionTitle}>{title}</Text> : null}
+      {title ? <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{title}</Text> : null}
       {sectionChildren.length > 0 ? (
-        <View style={styles.group}>{sectionChildren}</View>
+        <View style={[styles.group, { backgroundColor: colors.primaryCard }]}>{sectionChildren}</View>
       ) : null}
       {footer ? (
-        <Text style={styles.footer}>{footer}</Text>
+        <Text style={[styles.footer, { color: colors.textDim }]}>{footer}</Text>
       ) : null}
     </View>
   );
@@ -86,9 +86,9 @@ interface SettingsRowProps {
   accessibilityLabel?: string;
   selected?: boolean;
   disabled?: boolean;
-  titleColor?: string;
+  titleColor?: ThemeColor;
   detailSameFont?: boolean;
-  detailColor?: string;
+  detailColor?: ThemeColor;
   detailFontSize?: number;
 }
 
@@ -124,7 +124,7 @@ export function SettingsRow({
               numberOfLines={1}
               style={[
                 styles.rowTitle,
-                { color: destructive ? '#ff453a' : titleColor ?? colors.text },
+                { color: destructive ? colors.danger : titleColor ?? colors.text },
               ]}
             >
               {title}
@@ -148,7 +148,7 @@ export function SettingsRow({
   );
   const rowStyle = [
     styles.row,
-    !isLast && styles.rowWithSeparator,
+    !isLast && [styles.rowWithSeparator, { borderBottomColor: colors.border }],
     disabled && styles.disabledRow,
   ];
 
@@ -165,7 +165,7 @@ export function SettingsRow({
       disabled={disabled}
       style={({ pressed }) => [
         rowStyle,
-        pressed && styles.pressedRow,
+        pressed && { backgroundColor: colors.primarySubtle },
       ]}
     >
       {content}
@@ -204,10 +204,8 @@ const styles = StyleSheet.create({
     ...typography.subhead,
     fontWeight: '600',
     paddingHorizontal: spacing.md,
-    color: '#8e8e93',
   },
   group: {
-    backgroundColor: '#1C1C1E',
     borderRadius: radius.lg,
     borderCurve: 'continuous',
     overflow: 'hidden',
@@ -215,7 +213,6 @@ const styles = StyleSheet.create({
   footer: {
     ...typography.caption,
     paddingHorizontal: spacing.md,
-    color: '#8e8e93',
   },
   row: {
     width: '100%',
@@ -228,15 +225,11 @@ const styles = StyleSheet.create({
   },
   rowWithSeparator: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#38383a',
     marginLeft: spacing.md,
     paddingLeft: 0,
   },
   disabledRow: {
     opacity: 0.5,
-  },
-  pressedRow: {
-    backgroundColor: '#2C2C2E',
   },
   leading: {
     alignItems: 'center',

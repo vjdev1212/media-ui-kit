@@ -12,6 +12,8 @@ import {
   scrollIndicators,
   shapes,
 } from '@expo/ui/swift-ui/modifiers';
+import { useTheme } from './ThemeContext';
+import type { ThemeColor } from './theme';
 import NativeFieldSelect from './NativeFieldSelect';
 
 interface SettingsPageProps {
@@ -22,13 +24,14 @@ interface SettingsPageProps {
 }
 
 export function SettingsPage({ children, onRefresh, hideScrollIndicator = false }: SettingsPageProps) {
+  const { colorScheme } = useTheme();
   const scrollModifiers = [
     scrollIndicators('never', 'vertical'),
     ...(onRefresh ? [refreshable(onRefresh)] : []),
   ];
 
   return (
-    <Host style={{ flex: 1 }} colorScheme="dark">
+    <Host style={{ flex: 1 }} colorScheme={colorScheme}>
       {hideScrollIndicator ? (
         <NativeList modifiers={[listStyle('insetGrouped'), ...scrollModifiers]}>
           {children}
@@ -83,9 +86,9 @@ interface SettingsRowProps {
   accessibilityLabel?: string;
   selected?: boolean;
   disabled?: boolean;
-  titleColor?: string;
+  titleColor?: ThemeColor;
   detailSameFont?: boolean;
-  detailColor?: string;
+  detailColor?: ThemeColor;
 }
 
 export function SettingsRow({
@@ -102,6 +105,7 @@ export function SettingsRow({
   detailSameFont = false,
   detailColor,
 }: SettingsRowProps) {
+  const { colors } = useTheme();
   const leadingContent = leading ? (
     <RNHostView matchContents>
       <View>{leading}</View>
@@ -113,7 +117,7 @@ export function SettingsRow({
     </RNHostView>
   ) : null;
   const titleStyle = {
-    color: destructive ? '#ff453a' : disabled ? '#8e8e93' : titleColor ?? '#f2f2f7',
+    color: destructive ? colors.danger : disabled ? colors.textDim : titleColor ?? colors.text,
     fontSize: 17,
   };
   const titleContent = titleAccessory ? (
@@ -130,7 +134,7 @@ export function SettingsRow({
     <NativeText textStyle={{
       fontSize: detailSameFont ? 16 : 13,
       ...(detailSameFont ? { fontWeight: '400' as const } : {}),
-      color: detailColor ?? '#8e8e93',
+      color: detailColor ?? colors.textMuted,
     }}>
       {detail}
     </NativeText>
