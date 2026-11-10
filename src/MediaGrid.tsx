@@ -90,12 +90,6 @@ export const GENRE_NAMES: Record<number, string> = {
     878: 'Science Fiction',
 };
 
-const MEDIA_MENU_ACTIONS: MenuAction[] = [
-    { id: 'open', title: 'Go to Show', image: 'arrow.up.right' },
-    { id: 'watchlist', title: 'Add to Watchlist', image: 'bookmark' },
-    { id: 'share', title: 'Share Show', image: 'square.and.arrow.up' },
-];
-
 const ROW_HORIZONTAL_PADDING = 16;
 const POSTER_WIDTH = 88;
 const POSTER_TEXT_GAP = 16;
@@ -218,15 +212,19 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         }
     }, [mediaType, onActionError, onAddToWatchlist, onItemPress]);
 
-    const menuActions = onAddToWatchlist
-        ? MEDIA_MENU_ACTIONS
-        : MEDIA_MENU_ACTIONS.filter(({ id }) => id !== 'watchlist');
-    const webMenuActions = menuActions.map(({ id, title }) => ({ id: id ?? title, title }));
-
     const renderItem = useCallback((item: MediaGridItem) => {
         const itemType = (item.type ?? mediaType) === 'movie'
             ? 'Movie'
             : 'TV Show';
+        const allMenuActions: MenuAction[] = [
+            { id: 'open', title: 'View', image: 'arrow.up.right' },
+            { id: 'watchlist', title: 'Add to Watchlist', image: 'bookmark' },
+            { id: 'share', title: 'Share', image: 'square.and.arrow.up' },
+        ];
+        const menuActions = onAddToWatchlist
+            ? allMenuActions
+            : allMenuActions.filter(({ id }) => id !== 'watchlist');
+        const webMenuActions = menuActions.map(({ id, title }) => ({ id: id ?? title, title }));
         const year = item.year?.split('–')[0];
         const metadata = yearOnSeparateLine
             ? itemType
@@ -368,6 +366,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         rowWidth,
         showGenres,
         yearOnSeparateLine,
+        onAddToWatchlist,
     ]);
 
     return (
