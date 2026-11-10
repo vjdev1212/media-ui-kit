@@ -17,7 +17,7 @@ const MediaContentPoster: React.FC<MediaContentPosterProps> = ({ background, isP
   }, [fadeAnim]);
 
   return (
-    <View style={[styles.posterContainer, { aspectRatio: isPortrait ? 1 / 1 : 16 / 9 }]}>
+    <View style={[styles.posterContainer, { aspectRatio: 1 / 1 }]}>
       <Animated.View style={[styles.shadowContainer, { borderRadius: isPortrait ? 0 : radius.md }]}>
         {isLoading && (
           <Animated.View style={styles.loaderContainer}>

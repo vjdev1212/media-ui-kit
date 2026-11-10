@@ -1,7 +1,7 @@
 import React from 'react';
 import { Alert, Linking, Platform, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Ionicons } from '@expo/vector-icons';
+import Svg, { Path, Rect } from 'react-native-svg';
 import { useTheme } from './ThemeContext';
 import { NativeButton } from './NativeUiControls';
 
@@ -17,7 +17,7 @@ const WatchTrailerButton: React.FC<WatchTrailerButtonProps> = ({
     color,
 }) => {
     const { colors } = useTheme();
-    const iconColor = trailerKey ? color ?? colors.onPrimary : colors.textDim;
+    const iconColor = trailerKey ? color ?? colors.text : colors.textDim;
 
     const handlePress = async () => {
         if (!trailerKey) return;
@@ -43,19 +43,28 @@ const WatchTrailerButton: React.FC<WatchTrailerButtonProps> = ({
             style={[
                 styles.button,
                 {
-                    backgroundColor: trailerKey ? colors.primary : colors.backgroundCard,
+                    backgroundColor: colors.primarySurface,
                     borderColor: colors.primaryBorder,
                 },
                 !trailerKey && { opacity: 0.5 },
             ]}
             onPress={handlePress}
             disabled={!trailerKey}
+            accessibilityLabel="Watch trailer on YouTube"
         >
-            <Ionicons
-                name="logo-youtube"
-                size={size}
-                color={iconColor}
-            />
+            <Svg width={size} height={size} viewBox="0 0 24 24">
+                <Rect
+                    x={2}
+                    y={5}
+                    width={20}
+                    height={14}
+                    rx={4}
+                    fill="none"
+                    stroke={iconColor}
+                    strokeWidth={2}
+                />
+                <Path d="M10 9L16 12L10 15V9Z" fill={iconColor} />
+            </Svg>
         </NativeButton>
     );
 };
