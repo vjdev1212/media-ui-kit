@@ -8,8 +8,6 @@ import {
     useWindowDimensions,
     View as RNView,
 } from 'react-native';
-import { Link } from 'expo-router';
-import type { Href } from 'expo-router';
 import { MenuView, type MenuAction } from '@expo/ui/community/menu';
 import { Button as NativeButton, Column as NativeColumn, RNHostView, Row as NativeRow, Text as NativeText } from '@expo/ui';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,14 +23,13 @@ import { spacing, typography } from './theme';
 export interface MediaGridProps {
     apiUrl?: string;
     apiKey?: string;
-    detailsPath: '/movie/details' | '/series/details';
+    mediaType: 'movie' | 'series';
     items?: MediaGridItem[];
     compact?: boolean;
     showGenres?: boolean;
     yearOnSeparateLine?: boolean;
     safeAreaEdges?: Edge[];
     onItemPress: (item: MediaGridItem) => void;
-    getZoomHref?: (item: MediaGridItem) => Href;
     onAddToWatchlist?: (item: MediaGridItem) => Promise<boolean>;
     onActionError?: (title: string, message: string) => void;
 }
@@ -107,14 +104,13 @@ const MENU_ACTION_WIDTH = 56;
 const MediaGrid: React.FC<MediaGridProps> = ({
     apiUrl,
     apiKey,
-    detailsPath,
+    mediaType,
     items,
     compact = false,
     showGenres = true,
     yearOnSeparateLine = false,
     safeAreaEdges = ['left', 'right', 'bottom'],
     onItemPress,
-    getZoomHref,
     onAddToWatchlist,
     onActionError,
 }) => {
@@ -173,7 +169,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                             background: `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`,
                             imdbRating: item.vote_average?.toFixed(1),
                             imdbid: item.imdb_id,
-                            type: detailsPath === '/movie/details' ? 'movie' : 'series',
+                            type: mediaType,
                             genres: (item.genre_ids ?? [])
                                 .map((genreId) => GENRE_NAMES[genreId])
                                 .filter((genre): genre is string => Boolean(genre)),
@@ -189,7 +185,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         };
         void fetchData();
         return () => controller.abort();
-    }, [apiKey, apiUrl, detailsPath, items, retryCount]);
+    }, [apiKey, apiUrl, items, mediaType, retryCount]);
 
     const handleMenuAction = useCallback(async (actionId: string, item: MediaGridItem) => {
         if (actionId === 'open') {
@@ -209,7 +205,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         }
 
         if (actionId === 'share') {
-            const type = (item.type ?? (detailsPath === '/movie/details' ? 'movie' : 'series')) === 'movie'
+            const type = (item.type ?? mediaType) === 'movie'
                 ? 'movie'
                 : 'tv';
             const url = `https://www.themoviedb.org/${type}/${item.tmdbid}`;
@@ -220,7 +216,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                 onActionError?.('Share', 'Unable to share this title.');
             }
         }
-    }, [detailsPath, onActionError, onAddToWatchlist, onItemPress]);
+    }, [mediaType, onActionError, onAddToWatchlist, onItemPress]);
 
     const menuActions = onAddToWatchlist
         ? MEDIA_MENU_ACTIONS
@@ -228,13 +224,13 @@ const MediaGrid: React.FC<MediaGridProps> = ({
     const webMenuActions = menuActions.map(({ id, title }) => ({ id: id ?? title, title }));
 
     const renderItem = useCallback((item: MediaGridItem) => {
-        const mediaType = (item.type ?? (detailsPath === '/movie/details' ? 'movie' : 'series')) === 'movie'
+        const itemType = (item.type ?? mediaType) === 'movie'
             ? 'Movie'
             : 'TV Show';
         const year = item.year?.split('–')[0];
         const metadata = yearOnSeparateLine
-            ? mediaType
-            : [mediaType, year].filter(Boolean).join(' · ');
+            ? itemType
+            : [itemType, year].filter(Boolean).join(' · ');
         const secondaryMetadata = showGenres && item.genres.length > 0
             ? item.genres.join(' · ')
             : showGenres && item.imdbRating ? `★ ${item.imdbRating}` : undefined;
@@ -269,13 +265,10 @@ const MediaGrid: React.FC<MediaGridProps> = ({
             </MenuView>
         );
 
-        const zoomHref = getZoomHref?.(item);
         const mediaButton = (
             <NativeButton
                 variant="text"
-                onPress={() => {
-                    if (Platform.OS !== 'ios' || !zoomHref) onItemPress(item);
-                }}
+                onPress={() => onItemPress(item)}
                 style={{ width: mediaButtonWidth }}
             >
                 <NativeRow alignment="start" spacing={posterTextGap}>
@@ -334,12 +327,6 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                 </NativeRow>
             </NativeButton>
         );
-        const linkedMediaButton = Platform.OS === 'ios' && zoomHref ? (
-            <Link href={zoomHref} asChild>
-                <Link.Trigger withAppleZoom>{mediaButton}</Link.Trigger>
-            </Link>
-        ) : mediaButton;
-
         return (
             <NativeColumn style={{ width: rowWidth }}>
                 <NativeRow
@@ -347,7 +334,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                     spacing={posterTextGap}
                     style={{ width: rowWidth, paddingHorizontal: rowHorizontalPadding, paddingVertical: compact ? 10 : 12 }}
                 >
-                    {linkedMediaButton}
+                    {mediaButton}
                     <RNHostView matchContents>
                         <RNView style={[styles.menuActionSlot, { width: menuActionWidth, minWidth: menuActionWidth }]}>{menu}</RNView>
                     </RNHostView>
@@ -368,9 +355,8 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         colors.border,
         colors.textDim,
         compact,
-        detailsPath,
+        mediaType,
         handleMenuAction,
-        getZoomHref,
         mediaButtonWidth,
         mediaInfoWidth,
         menuActionWidth,

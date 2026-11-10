@@ -2,15 +2,11 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   FlatList,
   Image,
-  Platform,
-  Pressable,
   ScrollView as RNScrollView,
   StyleSheet,
   useWindowDimensions,
   View as RNView,
 } from 'react-native';
-import { Link } from 'expo-router';
-import type { Href } from 'expo-router';
 import { Text, View } from './Themed';
 import { getYear } from './Date';
 import { SvgXml } from 'react-native-svg';
@@ -45,7 +41,6 @@ export interface PosterListProps {
   type: 'movie' | 'series';
   compact?: boolean;
   onItemPress: (tmdbId: number, type: 'movie' | 'series') => void;
-  getZoomHref?: (tmdbId: number, type: 'movie' | 'series') => Href;
   onSeeAllPress: (apiUrl: string, title: string, type: 'movie' | 'series') => void;
 }
 
@@ -56,7 +51,6 @@ const PosterItem = React.memo(({
   cardHeight,
   type,
   onItemPress,
-  getZoomHref,
 }: {
   item: PosterItemData;
   posterWidth: number;
@@ -64,7 +58,6 @@ const PosterItem = React.memo(({
   cardHeight: number;
   type: 'movie' | 'series';
   onItemPress: PosterListProps['onItemPress'];
-  getZoomHref?: PosterListProps['getZoomHref'];
 }) => {
   const { colors } = useTheme();
   const [imgError, setImgError] = useState(false);
@@ -96,28 +89,11 @@ const PosterItem = React.memo(({
       <Text style={[styles.posterYear, { color: colors.textMuted }]}>{year}</Text>
     </>
   );
-  const zoomHref = getZoomHref?.(item.tmdbid, type);
-
-  if (Platform.OS === 'ios' && zoomHref) {
-    return (
-      <Link href={zoomHref} asChild>
-        <Link.Trigger withAppleZoom>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={`Open ${item.name}`}
-            style={{ width: posterWidth, height: cardHeight, flexShrink: 0 }}
-          >
-            {contents}
-          </Pressable>
-        </Link.Trigger>
-      </Link>
-    );
-  }
-
   return (
     <NativeButton
       variant="text"
       onPress={handlePress}
+      accessibilityLabel={`Open ${item.name}`}
       style={{ width: posterWidth, height: cardHeight, flexShrink: 0 }}
     >
       {contents}
@@ -142,7 +118,6 @@ const PosterList = ({
   type,
   compact = false,
   onItemPress,
-  getZoomHref,
   onSeeAllPress,
 }: PosterListProps) => {
   const { colors } = useTheme();
@@ -232,9 +207,8 @@ const PosterList = ({
       cardHeight={posterCardHeight}
       type={type}
       onItemPress={onItemPress}
-      getZoomHref={getZoomHref}
     />
-  ), [getZoomHref, onItemPress, posterCardHeight, posterHeight, posterWidth, type]);
+  ), [onItemPress, posterCardHeight, posterHeight, posterWidth, type]);
 
   if (loading) {
     return (

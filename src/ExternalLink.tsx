@@ -1,24 +1,27 @@
 import React from 'react';
-import { Link } from 'expo-router';
+import { Linking, Platform, Pressable, type PressableProps } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import { Platform } from 'react-native';
 
-export interface ExternalLinkProps extends Omit<React.ComponentProps<typeof Link>, 'href'> {
+export interface ExternalLinkProps extends Omit<PressableProps, 'onPress'> {
   href: string;
+  onPress?: PressableProps['onPress'];
 }
 
-export function ExternalLink({ href, ...props }: ExternalLinkProps) {
+export function ExternalLink({ href, onPress, ...props }: ExternalLinkProps) {
   return (
-    <Link
-      target="_blank"
+    <Pressable
       {...props}
-      // @ts-expect-error External URLs are not typed as Expo Router routes.
-      href={href}
+      accessibilityRole="link"
       onPress={(event) => {
-        if (Platform.OS !== 'web') {
-          event.preventDefault();
-          void WebBrowser.openBrowserAsync(href);
-        }
+        onPress?.(event);
+        if (event.defaultPrevented) return;
+
+        const openLink = Platform.OS === 'web'
+          ? Linking.openURL(href)
+          : WebBrowser.openBrowserAsync(href);
+        void openLink.catch((error: unknown) => {
+          console.error('Failed to open external link:', error);
+        });
       }}
     />
   );
