@@ -4,6 +4,7 @@ import * as Haptics from 'expo-haptics';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { useTheme } from './ThemeContext';
 import { NativeButton } from './NativeUiControls';
+import { radius } from './theme';
 
 interface WatchTrailerButtonProps {
     trailerKey: string | null;
@@ -54,16 +55,16 @@ const WatchTrailerButton: React.FC<WatchTrailerButtonProps> = ({
         >
             <Svg width={size} height={size} viewBox="0 0 24 24">
                 <Rect
-                    x={2}
-                    y={5}
-                    width={20}
-                    height={14}
-                    rx={4}
+                    x={2.5}
+                    y={5.5}
+                    width={19}
+                    height={13}
+                    rx={3}
                     fill="none"
                     stroke={iconColor}
-                    strokeWidth={2}
+                    strokeWidth={1.8}
                 />
-                <Path d="M10 9L16 12L10 15V9Z" fill={iconColor} />
+                <Path d="M10 9L15.5 12L10 15V9Z" fill={iconColor} />
             </Svg>
         </NativeButton>
     );
@@ -73,10 +74,10 @@ const styles = StyleSheet.create({
     button: {
         width: 50,
         height: 50,
-        borderRadius: 25,
+        borderRadius: radius.capsule,
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 2,
+        borderWidth: 1,
     },
 });
 
