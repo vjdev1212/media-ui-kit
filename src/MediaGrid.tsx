@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
     FlatList,
     Image,
@@ -21,8 +21,9 @@ import { spacing, typography } from './theme';
 
 export interface MediaGridProps {
     apiUrl?: string;
+    sources?: MediaGridSource[];
     apiKey?: string;
-    mediaType: 'movie' | 'series';
+    mediaType: 'movie' | 'series' | 'any';
     minimumPopularity?: number;
     items?: MediaGridItem[];
     compact?: boolean;
@@ -32,6 +33,11 @@ export interface MediaGridProps {
     onItemPress: (item: MediaGridItem) => void;
     onAddToWatchlist?: (item: MediaGridItem) => Promise<boolean>;
     onActionError?: (title: string, message: string) => void;
+}
+
+export interface MediaGridSource {
+    apiUrl: string;
+    mediaType: 'movie' | 'series';
 }
 
 export interface MediaGridItem {
@@ -45,6 +51,7 @@ export interface MediaGridItem {
     genres: string[];
     type?: 'movie' | 'series';
     popularity?: number;
+    sortValue?: string | number;
 }
 
 export const GENRE_NAMES: Record<number, string> = {
@@ -153,7 +160,7 @@ interface MediaPage {
 async function fetchMediaPage(
     apiUrl: string,
     apiKey: string | undefined,
-    mediaType: MediaGridProps['mediaType'],
+    mediaType: MediaGridSource['mediaType'],
     page: number,
     signal: AbortSignal,
     minimumPopularity?: number,
@@ -182,6 +189,7 @@ async function fetchMediaPage(
         && totalPagesValue >= currentPage
         ? totalPagesValue
         : currentPage;
+    const sortField = url.searchParams.get('sort_by')?.split('.')[0] ?? 'popularity';
     const items = payload.results.flatMap((value): MediaGridItem[] => {
         if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
         const item = value as Record<string, unknown>;
@@ -202,6 +210,15 @@ async function fetchMediaPage(
                 typeof genreId === 'number' && GENRE_NAMES[genreId] ? [GENRE_NAMES[genreId]] : []
             ))
             : [];
+        const sortValue = sortField === 'release_date'
+            || sortField === 'primary_release_date'
+            || sortField === 'first_air_date'
+            ? releaseDate
+            : sortField === 'title' || sortField === 'name'
+                ? (typeof item.title === 'string' ? item.title : item.name)
+                : sortField === 'original_title' || sortField === 'original_name'
+                    ? (typeof item.original_title === 'string' ? item.original_title : item.original_name)
+                    : item[sortField];
 
         return [{
             tmdbid: item.id,
@@ -214,14 +231,44 @@ async function fetchMediaPage(
             type: mediaType,
             genres,
             popularity: typeof item.popularity === 'number' ? item.popularity : undefined,
+            sortValue: typeof sortValue === 'string' || typeof sortValue === 'number' ? sortValue : undefined,
         }];
     });
 
     return { items, page: currentPage, totalPages };
 }
 
+async function fetchMediaSourcesPage(
+    sources: MediaGridSource[],
+    apiKey: string | undefined,
+    page: number,
+    signal: AbortSignal,
+    minimumPopularity?: number,
+): Promise<MediaPage> {
+    const pages = await Promise.all(sources.map((source) => (
+        fetchMediaPage(source.apiUrl, apiKey, source.mediaType, page, signal, minimumPopularity)
+    )));
+    const sortBy = new URL(sources[0].apiUrl).searchParams.get('sort_by') ?? 'popularity.desc';
+    const descending = sortBy.endsWith('.desc');
+    const items = pages.flatMap((result) => result.items);
+    items.sort((left, right) => {
+        if (left.sortValue === undefined) return 1;
+        if (right.sortValue === undefined) return -1;
+        const comparison = typeof left.sortValue === 'number' && typeof right.sortValue === 'number'
+            ? left.sortValue - right.sortValue
+            : String(left.sortValue).localeCompare(String(right.sortValue));
+        return descending ? -comparison : comparison;
+    });
+    return {
+        items,
+        page: Math.min(...pages.map((result) => result.page)),
+        totalPages: Math.max(...pages.map((result) => result.totalPages)),
+    };
+}
+
 const MediaGrid: React.FC<MediaGridProps> = ({
     apiUrl,
+    sources,
     apiKey,
     mediaType,
     minimumPopularity,
@@ -251,6 +298,14 @@ const MediaGrid: React.FC<MediaGridProps> = ({
     const totalPagesRef = useRef(1);
     const loadingMoreRef = useRef(false);
     const loadMoreControllerRef = useRef<AbortController | null>(null);
+    const activeSources = useMemo(
+        () => sources ?? (
+            apiUrl && mediaType !== 'any'
+                ? [{ apiUrl, mediaType }]
+                : []
+        ),
+        [apiUrl, mediaType, sources],
+    );
     const rowWidth = Math.max(0, width - insets.left - insets.right);
     const posterWidth = compact ? 64 : POSTER_WIDTH;
     const posterHeight = compact ? 96 : 132;
@@ -285,7 +340,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
             setError(null);
             return;
         }
-        if (!apiUrl) {
+        if (activeSources.length === 0) {
             setData([]);
             setLoading(false);
             setError(null);
@@ -296,7 +351,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         setData([]);
         setLoading(true);
         setError(null);
-        void fetchMediaPage(apiUrl, apiKey, mediaType, 1, controller.signal, minimumPopularity)
+        void fetchMediaSourcesPage(activeSources, apiKey, 1, controller.signal, minimumPopularity)
             .then((result) => {
                 if (controller.signal.aborted || requestId !== requestIdRef.current) return;
                 setData(result.items);
@@ -322,12 +377,12 @@ const MediaGrid: React.FC<MediaGridProps> = ({
             loadingMoreRef.current = false;
             if (requestIdRef.current === requestId) requestIdRef.current += 1;
         };
-    }, [apiKey, apiUrl, items, mediaType, minimumPopularity, retryCount]);
+    }, [activeSources, apiKey, apiUrl, items, mediaType, minimumPopularity, retryCount]);
 
     const loadMore = useCallback(async (isRetry = false) => {
         if (
             items !== undefined
-            || !apiUrl
+            || activeSources.length === 0
             || loading
             || loadingMoreRef.current
             || (!isRetry && loadMoreError)
@@ -345,10 +400,9 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         setEmptyFilteredPage(false);
 
         try {
-            const result = await fetchMediaPage(
-                apiUrl,
+            const result = await fetchMediaSourcesPage(
+                activeSources,
                 apiKey,
-                mediaType,
                 nextPage,
                 controller.signal,
                 minimumPopularity,
@@ -380,7 +434,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                 if (loadMoreControllerRef.current === controller) loadMoreControllerRef.current = null;
             }
         }
-    }, [apiKey, apiUrl, items, loadMoreError, loading, mediaType, minimumPopularity]);
+    }, [activeSources, apiKey, items, loadMoreError, loading, mediaType, minimumPopularity]);
 
     const handleMenuAction = useCallback(async (actionId: string, item: MediaGridItem) => {
         if (actionId === 'open') {
@@ -561,7 +615,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                 <Text style={[styles.retryText, { color: colors.primary }]}>Load more titles</Text>
             </Pressable>
         </View>
-    ) : items === undefined && apiUrl && data.length > 0 && page >= totalPages ? (
+    ) : items === undefined && activeSources.length > 0 && data.length > 0 && page >= totalPages ? (
         <View accessible accessibilityRole="text" style={styles.listFooter}>
             <Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />
             <Text style={styles.loadingText}>That's all</Text>
@@ -620,7 +674,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={listEmptyComponent}
                     ListFooterComponent={listFooter ?? undefined}
-                    onEndReached={items === undefined && apiUrl ? () => void loadMore() : undefined}
+                    onEndReached={items === undefined && activeSources.length > 0 ? () => void loadMore() : undefined}
                     onEndReachedThreshold={0.5}
                 />
             )}

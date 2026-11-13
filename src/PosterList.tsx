@@ -33,16 +33,31 @@ interface PosterItemData {
   background: string;
   year: string;
   imdbRating: string;
+  type: 'movie' | 'series';
+  sortValue?: string | number;
+}
+
+export interface PosterListSource {
+  apiUrl: string;
+  type: 'movie' | 'series';
+  minimumPopularity?: number;
 }
 
 export interface PosterListProps {
   apiUrl: string;
   title: string;
-  type: 'movie' | 'series';
+  type: 'movie' | 'series' | 'any';
+  sources?: PosterListSource[];
   minimumPopularity?: number;
   compact?: boolean;
   onItemPress: (tmdbId: number, type: 'movie' | 'series') => void;
-  onSeeAllPress: (apiUrl: string, title: string, type: 'movie' | 'series', minimumPopularity?: number) => void;
+  onSeeAllPress: (
+    apiUrl: string,
+    title: string,
+    type: 'movie' | 'series' | 'any',
+    minimumPopularity?: number,
+    sources?: PosterListSource[],
+  ) => void;
 }
 
 const PosterItem = React.memo(({
@@ -50,14 +65,12 @@ const PosterItem = React.memo(({
   posterWidth,
   posterHeight,
   cardHeight,
-  type,
   onItemPress,
 }: {
   item: PosterItemData;
   posterWidth: number;
   posterHeight: number;
   cardHeight: number;
-  type: 'movie' | 'series';
   onItemPress: PosterListProps['onItemPress'];
 }) => {
   const { colors } = useTheme();
@@ -65,8 +78,8 @@ const PosterItem = React.memo(({
   const year = item.year?.split('–')[0] || item.year;
 
   const handlePress = useCallback(() => {
-    onItemPress(item.tmdbid, type);
-  }, [item.tmdbid, onItemPress, type]);
+    onItemPress(item.tmdbid, item.type);
+  }, [item.tmdbid, item.type, onItemPress]);
 
   const contents = (
     <>
@@ -117,6 +130,7 @@ const PosterList = ({
   apiUrl,
   title,
   type,
+  sources,
   minimumPopularity,
   compact = false,
   onItemPress,
@@ -129,6 +143,10 @@ const PosterList = ({
 
   const [data, setData] = useState<PosterItemData[]>([]);
   const [loading, setLoading] = useState(true);
+  const activeSources = useMemo(
+    () => sources ?? (type === 'any' ? [] : [{ apiUrl, type, minimumPopularity }]),
+    [apiUrl, minimumPopularity, sources, type],
+  );
 
   const postersPerScreen = useMemo(() => {
     if (shortSide < 580) return isPortrait ? 3 : 5;
@@ -153,8 +171,10 @@ const PosterList = ({
   );
 
   useEffect(() => {
+    let active = true;
+    const controller = new AbortController();
     const fetchData = async () => {
-      const cacheKey = minimumPopularity === undefined ? apiUrl : `${apiUrl}|min-popularity=${minimumPopularity}`;
+      const cacheKey = JSON.stringify(activeSources);
       const cachedData = posterCache.get(cacheKey);
       const cacheTime = cacheTimestamps.get(cacheKey);
       const now = Date.now();
@@ -166,43 +186,98 @@ const PosterList = ({
       }
 
       try {
-        const separator = apiUrl.includes('?') ? '&' : '?';
-        const response = await fetch(`${apiUrl}${separator}api_key=${EXPO_PUBLIC_TMDB_API_KEY}`);
-        const result = await response.json();
-        const collection = result?.results ?? [];
+        const sourceResults = await Promise.all(activeSources.map(async (source) => {
+          const url = new URL(source.apiUrl);
+          url.searchParams.set('api_key', EXPO_PUBLIC_TMDB_API_KEY ?? '');
+          const response = await fetch(url.toString(), { signal: controller.signal });
+          if (!response.ok) throw new Error(`TMDB poster request failed with HTTP ${response.status}.`);
+          const result: unknown = await response.json();
+          const collection = result && typeof result === 'object' && 'results' in result
+            && Array.isArray(result.results)
+            ? result.results
+            : [];
+          const sortBy = url.searchParams.get('sort_by') ?? 'popularity.desc';
+          const sortField = sortBy.split('.')[0];
 
-        const formatted = collection
-          .filter((item: any) => item.poster_path && item.backdrop_path
-            && (minimumPopularity === undefined
-              || (typeof item.popularity === 'number' && item.popularity >= minimumPopularity)))
-          .slice(0, 20)
-          .map((item: any) => ({
-            tmdbid: item.id,
-            name: item.title || item.name,
-            poster: `https://image.tmdb.org/t/p/${POSTER_IMAGE_SIZE}${item.poster_path}`,
-            background: `https://image.tmdb.org/t/p/w780${item.backdrop_path}`,
-            year: getYear(item.release_date || item.first_air_date),
-            imdbRating: item.vote_average?.toFixed(1),
-          }));
+          return collection.flatMap((item): PosterItemData[] => {
+            if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+            const media = item as Record<string, unknown>;
+            if (
+              typeof media.id !== 'number'
+              || typeof media.poster_path !== 'string'
+              || typeof media.backdrop_path !== 'string'
+              || (source.minimumPopularity !== undefined
+                && (typeof media.popularity !== 'number' || media.popularity < source.minimumPopularity))
+            ) return [];
 
-        posterCache.set(cacheKey, formatted);
+            const releaseDate = typeof media.release_date === 'string'
+              ? media.release_date
+              : typeof media.first_air_date === 'string' ? media.first_air_date : '';
+            const sortValue = sortField === 'release_date'
+              || sortField === 'primary_release_date'
+              || sortField === 'first_air_date'
+              ? releaseDate
+              : sortField === 'title' || sortField === 'name'
+                ? (typeof media.title === 'string' ? media.title : media.name)
+                : sortField === 'original_title' || sortField === 'original_name'
+                  ? (typeof media.original_title === 'string' ? media.original_title : media.original_name)
+                  : media[sortField];
+            return [{
+              tmdbid: media.id,
+              name: typeof media.title === 'string'
+                ? media.title
+                : typeof media.name === 'string' ? media.name : '',
+              poster: `https://image.tmdb.org/t/p/${POSTER_IMAGE_SIZE}${media.poster_path}`,
+              background: `https://image.tmdb.org/t/p/w780${media.backdrop_path}`,
+              year: getYear(releaseDate),
+              imdbRating: typeof media.vote_average === 'number' ? media.vote_average.toFixed(1) : '',
+              type: source.type,
+              sortValue: typeof sortValue === 'string' || typeof sortValue === 'number' ? sortValue : undefined,
+            }];
+          });
+        }));
+
+        const formatted = sourceResults.flat();
+        if (activeSources.length > 1) {
+          const sortBy = new URL(activeSources[0].apiUrl).searchParams.get('sort_by') ?? 'popularity.desc';
+          const descending = sortBy.endsWith('.desc');
+          formatted.sort((left, right) => {
+            if (left.sortValue === undefined) return 1;
+            if (right.sortValue === undefined) return -1;
+            const comparison = typeof left.sortValue === 'number' && typeof right.sortValue === 'number'
+              ? left.sortValue - right.sortValue
+              : String(left.sortValue).localeCompare(String(right.sortValue));
+            return descending ? -comparison : comparison;
+          });
+        }
+
+        const limitedItems = formatted.slice(0, 20);
+        if (!active) return;
+        posterCache.set(cacheKey, limitedItems);
         cacheTimestamps.set(cacheKey, now);
-        setData(formatted);
+        setData(limitedItems);
       } catch (error) {
-        console.error('Error loading posters', error);
+        if (!controller.signal.aborted) console.error('Error loading posters', error);
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
-    fetchData();
-  }, [apiUrl, minimumPopularity]);
+    setLoading(true);
+    void fetchData();
+    return () => {
+      active = false;
+      controller.abort();
+    };
+  }, [activeSources]);
 
   const handleSeeAllPress = useCallback(() => {
-    const typeTitle = type === 'movie' ? 'Movies' : 'Series';
-    const pageTitle = title.startsWith(`${typeTitle} - `) ? title : `${typeTitle} - ${title}`;
-    onSeeAllPress(apiUrl, pageTitle, type, minimumPopularity);
-  }, [apiUrl, minimumPopularity, onSeeAllPress, title, type]);
+    const typeTitle = type === 'movie' ? 'Movies' : type === 'series' ? 'Series' : '';
+    const pageTitle = typeTitle && !title.startsWith(`${typeTitle} - `)
+      ? `${typeTitle} - ${title}`
+      : title;
+    onSeeAllPress(apiUrl, pageTitle, type, minimumPopularity, sources);
+  }, [apiUrl, minimumPopularity, onSeeAllPress, sources, title, type]);
 
   const renderPosterItem = useCallback(({ item, index }: { item: PosterItemData; index: number }) => (
     <PosterItem
@@ -210,10 +285,9 @@ const PosterList = ({
       posterWidth={posterWidth}
       posterHeight={posterHeight}
       cardHeight={posterCardHeight}
-      type={type}
       onItemPress={onItemPress}
     />
-  ), [onItemPress, posterCardHeight, posterHeight, posterWidth, type]);
+  ), [onItemPress, posterCardHeight, posterHeight, posterWidth]);
 
   if (loading) {
     return (
