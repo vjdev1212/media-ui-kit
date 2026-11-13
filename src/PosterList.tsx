@@ -39,9 +39,10 @@ export interface PosterListProps {
   apiUrl: string;
   title: string;
   type: 'movie' | 'series';
+  minimumPopularity?: number;
   compact?: boolean;
   onItemPress: (tmdbId: number, type: 'movie' | 'series') => void;
-  onSeeAllPress: (apiUrl: string, title: string, type: 'movie' | 'series') => void;
+  onSeeAllPress: (apiUrl: string, title: string, type: 'movie' | 'series', minimumPopularity?: number) => void;
 }
 
 const PosterItem = React.memo(({
@@ -116,6 +117,7 @@ const PosterList = ({
   apiUrl,
   title,
   type,
+  minimumPopularity,
   compact = false,
   onItemPress,
   onSeeAllPress,
@@ -152,8 +154,9 @@ const PosterList = ({
 
   useEffect(() => {
     const fetchData = async () => {
-      const cachedData = posterCache.get(apiUrl);
-      const cacheTime = cacheTimestamps.get(apiUrl);
+      const cacheKey = minimumPopularity === undefined ? apiUrl : `${apiUrl}|min-popularity=${minimumPopularity}`;
+      const cachedData = posterCache.get(cacheKey);
+      const cacheTime = cacheTimestamps.get(cacheKey);
       const now = Date.now();
 
       if (cachedData && cacheTime && (now - cacheTime) < CACHE_DURATION) {
@@ -169,7 +172,9 @@ const PosterList = ({
         const collection = result?.results ?? [];
 
         const formatted = collection
-          .filter((item: any) => item.poster_path && item.backdrop_path)
+          .filter((item: any) => item.poster_path && item.backdrop_path
+            && (minimumPopularity === undefined
+              || (typeof item.popularity === 'number' && item.popularity >= minimumPopularity)))
           .slice(0, 20)
           .map((item: any) => ({
             tmdbid: item.id,
@@ -180,8 +185,8 @@ const PosterList = ({
             imdbRating: item.vote_average?.toFixed(1),
           }));
 
-        posterCache.set(apiUrl, formatted);
-        cacheTimestamps.set(apiUrl, now);
+        posterCache.set(cacheKey, formatted);
+        cacheTimestamps.set(cacheKey, now);
         setData(formatted);
       } catch (error) {
         console.error('Error loading posters', error);
@@ -191,13 +196,13 @@ const PosterList = ({
     };
 
     fetchData();
-  }, [apiUrl]);
+  }, [apiUrl, minimumPopularity]);
 
   const handleSeeAllPress = useCallback(() => {
     const typeTitle = type === 'movie' ? 'Movies' : 'Series';
     const pageTitle = title.startsWith(`${typeTitle} - `) ? title : `${typeTitle} - ${title}`;
-    onSeeAllPress(apiUrl, pageTitle, type);
-  }, [apiUrl, onSeeAllPress, title, type]);
+    onSeeAllPress(apiUrl, pageTitle, type, minimumPopularity);
+  }, [apiUrl, minimumPopularity, onSeeAllPress, title, type]);
 
   const renderPosterItem = useCallback(({ item, index }: { item: PosterItemData; index: number }) => (
     <PosterItem

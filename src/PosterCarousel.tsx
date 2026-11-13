@@ -26,9 +26,15 @@ export interface CarouselItem {
     tmdbid: number;
 }
 
+export interface CarouselSource {
+    apiUrl: string;
+    type: 'movie' | 'series';
+    minimumPopularity?: number;
+}
+
 export interface PosterCarouselProps {
     apiKey?: string;
-    filter?: 'all' | 'movies' | 'series';
+    posterLists: CarouselSource[];
     onItemPress?: (item: CarouselItem) => void;
     autoPlay?: boolean;
     autoPlayInterval?: number;
@@ -43,7 +49,7 @@ const posterImageGradient = [
 
 export default function AppleTVCarousel({
     apiKey,
-    filter = 'all',
+    posterLists,
     onItemPress,
     autoPlay = true,
     autoPlayInterval = 5000,
@@ -86,56 +92,100 @@ export default function AppleTVCarousel({
     }, []);
 
     useEffect(() => {
+        if (posterLists.length === 0) {
+            setData([]);
+            setActiveIndex(0);
+            setLoading(false);
+            return;
+        }
+
+        const controller = new AbortController();
         const fetchCarouselData = async () => {
             try {
                 setLoading(true);
-                const promises: Promise<any>[] = [];
-
-                if (filter === 'all' || filter === 'movies') {
-                    promises.push(fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${apiKey ?? ''}`).then(r => r.json()));
-                }
-                if (filter === 'all' || filter === 'series') {
-                    promises.push(fetch(`https://api.themoviedb.org/3/trending/tv/week?api_key=${apiKey ?? ''}`).then(r => r.json()));
-                }
-
-                const results = await Promise.all(promises);
-                const allItems: any[] = [];
-
-                results.forEach((result, index) => {
-                    let type: 'movie' | 'series';
-                    if (filter === 'movies') type = 'movie';
-                    else if (filter === 'series') type = 'series';
-                    else type = index === 0 ? 'movie' : 'series';
-
-                    const items = result?.results?.slice(0, 5) || [];
-                    items.forEach((item: any) => {
-                        if (item.poster_path && item.backdrop_path) {
-                            allItems.push({
-                                id: `${type}-${item.id}`,
-                                title: item.title || item.name,
-                                subtitle: item.overview,
-                                posterUrl: `https://image.tmdb.org/t/p/w780${item.poster_path}`,
-                                backdropUrl: `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`,
-                                type,
-                                year: getYear(item.release_date || item.first_air_date),
-                                rating: item.vote_average?.toFixed(1) || '0.0',
-                                tmdbid: item.id,
+                const sourceResults = await Promise.all(posterLists.map(async (source) => {
+                    try {
+                        const separator = source.apiUrl.includes('?') ? '&' : '?';
+                        const response = await fetch(
+                            `${source.apiUrl}${separator}api_key=${encodeURIComponent(apiKey ?? '')}`,
+                            { signal: controller.signal },
+                        );
+                        if (!response.ok) throw new Error(`TMDB request failed with HTTP ${response.status}.`);
+                        const payload: unknown = await response.json();
+                        const results = payload && typeof payload === 'object' && 'results' in payload
+                            && Array.isArray(payload.results)
+                            ? payload.results
+                            : [];
+                        const minimumPopularity = source.minimumPopularity;
+                        const filteredResults = minimumPopularity === undefined
+                            ? results
+                            : results.filter((item: unknown) => {
+                                if (!item || typeof item !== 'object' || Array.isArray(item)) return false;
+                                const popularity = (item as Record<string, unknown>).popularity;
+                                return typeof popularity === 'number' && popularity >= minimumPopularity;
                             });
+                        return { type: source.type, results: filteredResults.slice(0, 5) };
+                    } catch (error) {
+                        if (!controller.signal.aborted) {
+                            console.error(`Error fetching ${source.type} carousel source:`, error);
                         }
+                        return { type: source.type, results: [] };
+                    }
+                }));
+
+                if (controller.signal.aborted) return;
+
+                const uniqueItems = new Map<string, CarouselItem>();
+                sourceResults.forEach(({ type, results }) => {
+                    results.forEach((item) => {
+                        if (!item || typeof item !== 'object') return;
+                        const media = item as Record<string, unknown>;
+                        const title = typeof media.title === 'string'
+                            ? media.title
+                            : typeof media.name === 'string'
+                                ? media.name
+                                : undefined;
+                        if (
+                            typeof media.id !== 'number'
+                            || typeof media.poster_path !== 'string'
+                            || !media.poster_path
+                            || typeof media.backdrop_path !== 'string'
+                            || !media.backdrop_path
+                            || !title
+                        ) return;
+
+                        const releaseDate = typeof media.release_date === 'string'
+                            ? media.release_date
+                            : typeof media.first_air_date === 'string'
+                                ? media.first_air_date
+                                : '';
+                        const carouselItem: CarouselItem = {
+                            id: `${type}-${media.id}`,
+                            title,
+                            subtitle: typeof media.overview === 'string' ? media.overview : undefined,
+                            posterUrl: `https://image.tmdb.org/t/p/w780${media.poster_path}`,
+                            backdropUrl: `https://image.tmdb.org/t/p/w1280${media.backdrop_path}`,
+                            type,
+                            year: getYear(releaseDate),
+                            rating: typeof media.vote_average === 'number' ? media.vote_average.toFixed(1) : '0.0',
+                            tmdbid: media.id,
+                        };
+                        uniqueItems.set(carouselItem.id, carouselItem);
                     });
                 });
 
-                const shuffled = allItems.sort(() => 0.5 - Math.random()).slice(0, 6);
-                setData(shuffled);
+                setData([...uniqueItems.values()].sort(() => 0.5 - Math.random()).slice(0, 6));
+                setActiveIndex(0);
             } catch (error) {
-                console.error('Error fetching carousel data:', error);
+                if (!controller.signal.aborted) console.error('Error fetching carousel data:', error);
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) setLoading(false);
             }
         };
 
-        fetchCarouselData();
-    }, [apiKey, filter]);
+        void fetchCarouselData();
+        return () => controller.abort();
+    }, [apiKey, posterLists]);
 
     useEffect(() => {
         if (autoPlay && data.length > 1) {
@@ -287,7 +337,7 @@ export default function AppleTVCarousel({
         );
     }, [activeIndex, data, isLandscape, handleItemPress, itemWidth, reducedMotion, renderPaginationDot, responsiveDims, topInset]);
 
-    if (loading || !data.length) {
+    if (loading) {
         return (
             <View
                 onLayout={handleCarouselLayout}
@@ -297,6 +347,8 @@ export default function AppleTVCarousel({
             </View>
         );
     }
+
+    if (!data.length) return null;
 
     return (
         <View

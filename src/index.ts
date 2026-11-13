@@ -40,6 +40,6 @@ export type { PersonDetailsScreenProps } from './PersonDetailsScreen';
 export type { PosterListProps } from './PosterList';
 export type { LibraryButtonProps, LibraryButtonItem, LibraryButtonService } from './LibraryButton';
 export type { MediaGridItem, MediaGridProps } from './MediaGrid';
-export type { CarouselItem, PosterCarouselProps } from './PosterCarousel';
+export type { CarouselItem, CarouselSource, PosterCarouselProps } from './PosterCarousel';
 export type { Episode, SeasonEpisodeListProps } from './SeasonEpisodeList';
 export type { NativeFieldSelectProps } from './native-field-select.types';

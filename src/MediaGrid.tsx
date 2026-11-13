@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+    FlatList,
     Image,
     Platform,
     Pressable,
@@ -9,7 +10,6 @@ import {
     View as RNView,
 } from 'react-native';
 import { MenuView, type MenuAction } from '@expo/ui/community/menu';
-import { Button as NativeButton, Column as NativeColumn, RNHostView, Row as NativeRow, Text as NativeText } from '@expo/ui';
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, StatusBar, Text, View } from './Themed';
 import { WebMenu } from './WebMenuView';
@@ -17,13 +17,13 @@ import PosterArtwork from './PosterArtwork';
 import { getYear } from './Date';
 import { SafeAreaView, useSafeAreaInsets, type Edge } from 'react-native-safe-area-context';
 import { useTheme } from './ThemeContext';
-import NativeStackList from './NativeStackList';
 import { spacing, typography } from './theme';
 
 export interface MediaGridProps {
     apiUrl?: string;
     apiKey?: string;
     mediaType: 'movie' | 'series';
+    minimumPopularity?: number;
     items?: MediaGridItem[];
     compact?: boolean;
     showGenres?: boolean;
@@ -45,19 +45,6 @@ export interface MediaGridItem {
     genres: string[];
     type?: 'movie' | 'series';
     popularity?: number;
-}
-
-interface TMDBMediaItem {
-    id: number;
-    title?: string;
-    name?: string;
-    poster_path?: string | null;
-    backdrop_path?: string | null;
-    release_date?: string;
-    first_air_date?: string;
-    vote_average?: number;
-    imdb_id?: string;
-    genre_ids?: number[];
 }
 
 export const GENRE_NAMES: Record<number, string> = {
@@ -95,10 +82,149 @@ const POSTER_WIDTH = 88;
 const POSTER_TEXT_GAP = 16;
 const MENU_ACTION_WIDTH = 56;
 
+interface GridPosterProps {
+    poster?: string;
+    width: number;
+    height: number;
+    compact: boolean;
+}
+
+const GridPoster = React.memo(function GridPoster({
+    poster,
+    width,
+    height,
+    compact,
+}: GridPosterProps) {
+    const { colors } = useTheme();
+    const [isLoaded, setIsLoaded] = useState(false);
+    const [hasError, setHasError] = useState(false);
+
+    return (
+        <PosterArtwork style={[styles.posterFrame, { width, height }]}>
+            {(onImageLoad) => (
+                <>
+                    {poster && !hasError ? (
+                        <Image
+                            key={poster}
+                            source={{ uri: poster }}
+                            onLoadStart={() => setIsLoaded(false)}
+                            onLoad={() => {
+                                setIsLoaded(true);
+                                onImageLoad();
+                            }}
+                            onError={() => setHasError(true)}
+                            resizeMethod="resize"
+                            fadeDuration={0}
+                            style={[
+                                styles.poster,
+                                { width, height, backgroundColor: colors.backgroundOverlay },
+                            ]}
+                            resizeMode="cover"
+                        />
+                    ) : null}
+                    {(!isLoaded || hasError || !poster) && (
+                        <RNView
+                            pointerEvents="none"
+                            style={[
+                                StyleSheet.absoluteFill,
+                                styles.posterPlaceholder,
+                                { backgroundColor: colors.backgroundOverlay },
+                            ]}
+                        >
+                            <Ionicons
+                                name="film-outline"
+                                size={compact ? 20 : 30}
+                                color={colors.textDim}
+                            />
+                        </RNView>
+                    )}
+                </>
+            )}
+        </PosterArtwork>
+    );
+});
+
+interface MediaPage {
+    items: MediaGridItem[];
+    page: number;
+    totalPages: number;
+}
+
+async function fetchMediaPage(
+    apiUrl: string,
+    apiKey: string | undefined,
+    mediaType: MediaGridProps['mediaType'],
+    page: number,
+    signal: AbortSignal,
+    minimumPopularity?: number,
+): Promise<MediaPage> {
+    if (!apiKey) throw new Error('TMDB API key is not configured.');
+
+    const url = new URL(apiUrl);
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('api_key', apiKey);
+
+    const response = await fetch(url.toString(), { signal });
+    if (!response.ok) throw new Error(`Request failed (${response.status}).`);
+
+    const payload: unknown = await response.json();
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload) || !('results' in payload) || !Array.isArray(payload.results)) {
+        throw new Error('TMDB returned an invalid media list.');
+    }
+
+    const pageValue = 'page' in payload ? payload.page : undefined;
+    const totalPagesValue = 'total_pages' in payload ? payload.total_pages : undefined;
+    const currentPage = typeof pageValue === 'number' && Number.isInteger(pageValue) && pageValue > 0
+        ? pageValue
+        : page;
+    const totalPages = typeof totalPagesValue === 'number'
+        && Number.isInteger(totalPagesValue)
+        && totalPagesValue >= currentPage
+        ? totalPagesValue
+        : currentPage;
+    const items = payload.results.flatMap((value): MediaGridItem[] => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+        const item = value as Record<string, unknown>;
+        if (typeof item.id !== 'number' || typeof item.poster_path !== 'string' || typeof item.backdrop_path !== 'string') {
+            return [];
+        }
+        if (
+            minimumPopularity !== undefined
+            && (typeof item.popularity !== 'number' || item.popularity < minimumPopularity)
+        ) return [];
+
+        const releaseDate = typeof item.release_date === 'string'
+            ? item.release_date
+            : typeof item.first_air_date === 'string' ? item.first_air_date : '';
+        const voteAverage = typeof item.vote_average === 'number' ? item.vote_average : undefined;
+        const genres = Array.isArray(item.genre_ids)
+            ? item.genre_ids.flatMap((genreId) => (
+                typeof genreId === 'number' && GENRE_NAMES[genreId] ? [GENRE_NAMES[genreId]] : []
+            ))
+            : [];
+
+        return [{
+            tmdbid: item.id,
+            name: typeof item.title === 'string' ? item.title : typeof item.name === 'string' ? item.name : '',
+            year: getYear(releaseDate),
+            poster: `https://image.tmdb.org/t/p/w342${item.poster_path}`,
+            background: `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`,
+            imdbRating: voteAverage?.toFixed(1),
+            imdbid: typeof item.imdb_id === 'string' ? item.imdb_id : undefined,
+            type: mediaType,
+            genres,
+            popularity: typeof item.popularity === 'number' ? item.popularity : undefined,
+        }];
+    });
+
+    return { items, page: currentPage, totalPages };
+}
+
 const MediaGrid: React.FC<MediaGridProps> = ({
     apiUrl,
     apiKey,
     mediaType,
+    minimumPopularity,
     items,
     compact = false,
     showGenres = true,
@@ -115,6 +241,16 @@ const MediaGrid: React.FC<MediaGridProps> = ({
     const [loading, setLoading] = useState(items === undefined && Boolean(apiUrl));
     const [error, setError] = useState<string | null>(null);
     const [retryCount, setRetryCount] = useState(0);
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
+    const [emptyFilteredPage, setEmptyFilteredPage] = useState(false);
+    const requestIdRef = useRef(0);
+    const nextPageRef = useRef(2);
+    const totalPagesRef = useRef(1);
+    const loadingMoreRef = useRef(false);
+    const loadMoreControllerRef = useRef<AbortController | null>(null);
     const rowWidth = Math.max(0, width - insets.left - insets.right);
     const posterWidth = compact ? 64 : POSTER_WIDTH;
     const posterHeight = compact ? 96 : 132;
@@ -123,7 +259,7 @@ const MediaGrid: React.FC<MediaGridProps> = ({
     const menuActionWidth = compact ? 40 : MENU_ACTION_WIDTH;
     const mediaButtonWidth = Math.max(
         0,
-        rowWidth - rowHorizontalPadding * 2 - menuActionWidth,
+        rowWidth - rowHorizontalPadding * 2 - menuActionWidth - posterTextGap,
     );
     const mediaInfoWidth = Math.max(
         0,
@@ -131,6 +267,18 @@ const MediaGrid: React.FC<MediaGridProps> = ({
     );
 
     useEffect(() => {
+        const requestId = ++requestIdRef.current;
+        loadMoreControllerRef.current?.abort();
+        loadMoreControllerRef.current = null;
+        loadingMoreRef.current = false;
+        nextPageRef.current = 2;
+        totalPagesRef.current = 1;
+        setPage(1);
+        setTotalPages(1);
+        setLoadingMore(false);
+        setLoadMoreError(null);
+        setEmptyFilteredPage(false);
+
         if (items !== undefined) {
             setData(items);
             setLoading(false);
@@ -140,46 +288,99 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         if (!apiUrl) {
             setData([]);
             setLoading(false);
+            setError(null);
             return;
         }
+
         const controller = new AbortController();
-        const fetchData = async () => {
-            setLoading(true);
-            setError(null);
-            try {
-                const separator = apiUrl.includes('?') ? '&' : '?';
-                if (!apiKey) throw new Error('TMDB API key is not configured.');
-                const response = await fetch(`${apiUrl}${separator}api_key=${apiKey}`, { signal: controller.signal });
-                if (!response.ok) throw new Error(`Request failed (${response.status}).`);
-                const result = await response.json();
-                if (result?.results) {
-                    setData(result.results
-                        .filter((item: TMDBMediaItem) => item.poster_path && item.backdrop_path)
-                        .map((item: TMDBMediaItem) => ({
-                            tmdbid: item.id,
-                            name: item.title || item.name || '',
-                            year: getYear(item.release_date || item.first_air_date || ''),
-                            poster: `https://image.tmdb.org/t/p/w342${item.poster_path}`,
-                            background: `https://image.tmdb.org/t/p/w1280${item.backdrop_path}`,
-                            imdbRating: item.vote_average?.toFixed(1),
-                            imdbid: item.imdb_id,
-                            type: mediaType,
-                            genres: (item.genre_ids ?? [])
-                                .map((genreId) => GENRE_NAMES[genreId])
-                                .filter((genre): genre is string => Boolean(genre)),
-                        })));
+        setData([]);
+        setLoading(true);
+        setError(null);
+        void fetchMediaPage(apiUrl, apiKey, mediaType, 1, controller.signal, minimumPopularity)
+            .then((result) => {
+                if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+                setData(result.items);
+                setPage(result.page);
+                setTotalPages(result.totalPages);
+                nextPageRef.current = result.page + 1;
+                totalPagesRef.current = result.totalPages;
+            })
+            .catch((fetchError: unknown) => {
+                if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+                setError(fetchError instanceof Error ? fetchError.message : 'Unable to load titles.');
+            })
+            .finally(() => {
+                if (!controller.signal.aborted && requestId === requestIdRef.current) {
+                    setLoading(false);
                 }
-            } catch (fetchError) {
-                if (!controller.signal.aborted) {
-                    setError(fetchError instanceof Error ? fetchError.message : 'Unable to load titles.');
-                }
-            } finally {
-                if (!controller.signal.aborted) setLoading(false);
-            }
+            });
+
+        return () => {
+            controller.abort();
+            loadMoreControllerRef.current?.abort();
+            loadMoreControllerRef.current = null;
+            loadingMoreRef.current = false;
+            if (requestIdRef.current === requestId) requestIdRef.current += 1;
         };
-        void fetchData();
-        return () => controller.abort();
-    }, [apiKey, apiUrl, items, mediaType, retryCount]);
+    }, [apiKey, apiUrl, items, mediaType, minimumPopularity, retryCount]);
+
+    const loadMore = useCallback(async (isRetry = false) => {
+        if (
+            items !== undefined
+            || !apiUrl
+            || loading
+            || loadingMoreRef.current
+            || (!isRetry && loadMoreError)
+        ) return;
+
+        const nextPage = nextPageRef.current;
+        if (nextPage > totalPagesRef.current) return;
+
+        const requestId = requestIdRef.current;
+        const controller = new AbortController();
+        loadMoreControllerRef.current = controller;
+        loadingMoreRef.current = true;
+        setLoadingMore(true);
+        setLoadMoreError(null);
+        setEmptyFilteredPage(false);
+
+        try {
+            const result = await fetchMediaPage(
+                apiUrl,
+                apiKey,
+                mediaType,
+                nextPage,
+                controller.signal,
+                minimumPopularity,
+            );
+            if (controller.signal.aborted || requestId !== requestIdRef.current) return;
+
+            setData((currentData) => {
+                const knownIds = new Set(currentData.map((item) => item.tmdbid));
+                const newItems = result.items.filter((item) => !knownIds.has(item.tmdbid));
+                return [...currentData, ...newItems];
+            });
+            setPage(result.page);
+            setTotalPages(result.totalPages);
+            nextPageRef.current = result.page + 1;
+            totalPagesRef.current = result.totalPages;
+            setEmptyFilteredPage(
+                minimumPopularity !== undefined
+                && result.items.length === 0
+                && result.page < result.totalPages,
+            );
+        } catch (fetchError) {
+            if (!controller.signal.aborted && requestId === requestIdRef.current) {
+                setLoadMoreError(fetchError instanceof Error ? fetchError.message : 'Unable to load more titles.');
+            }
+        } finally {
+            if (requestId === requestIdRef.current) {
+                loadingMoreRef.current = false;
+                setLoadingMore(false);
+                if (loadMoreControllerRef.current === controller) loadMoreControllerRef.current = null;
+            }
+        }
+    }, [apiKey, apiUrl, items, loadMoreError, loading, mediaType, minimumPopularity]);
 
     const handleMenuAction = useCallback(async (actionId: string, item: MediaGridItem) => {
         if (actionId === 'open') {
@@ -264,89 +465,61 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         );
 
         const mediaButton = (
-            <NativeButton
-                variant="text"
+            <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Open ${item.name}`}
                 onPress={() => onItemPress(item)}
-                style={{ width: mediaButtonWidth }}
+                style={[
+                    styles.mediaButton,
+                    { width: mediaButtonWidth, gap: posterTextGap },
+                ]}
             >
-                <NativeRow alignment="start" spacing={posterTextGap}>
-                    <RNHostView matchContents>
-                        <PosterArtwork key={item.poster ?? 'placeholder'} style={[
-                            styles.posterFrame,
-                            { width: posterWidth, height: posterHeight },
-                        ]}>
-                            {(onImageLoad) => item.poster ? (
-                                <Image
-                                    source={{ uri: item.poster }}
-                                    onLoad={onImageLoad}
-                                    resizeMethod="resize"
-                                    style={[
-                                        styles.poster,
-                                        { width: posterWidth, height: posterHeight, backgroundColor: colors.backgroundOverlay },
-                                    ]}
-                                    resizeMode="cover"
-                                />
-                            ) : (
-                                <RNView style={[
-                                    styles.posterPlaceholder,
-                                    { width: posterWidth, height: posterHeight, backgroundColor: colors.backgroundOverlay },
-                                ]}>
-                                    <Ionicons name="film-outline" size={compact ? 20 : 30} color={colors.textDim} />
-                                </RNView>
-                            )}
-                        </PosterArtwork>
-                    </RNHostView>
-                    <NativeColumn alignment="start" spacing={compact ? 3 : 7} style={{ width: mediaInfoWidth, paddingTop: spacing.xs }}>
-                        <NativeText textStyle={compact ? styles.compactMediaTitle : styles.mediaTitle}>
-                            {item.name}
-                        </NativeText>
-                        {metadata && (
-                            <NativeText textStyle={{
-                                ...(compact ? styles.compactMediaMetadata : styles.mediaMetadata),
-                            }}>
-                                {metadata}
-                            </NativeText>
-                        )}
-                        {yearOnSeparateLine && year && (
-                            <NativeText textStyle={{
-                                ...(compact ? styles.compactMediaMetadata : styles.mediaMetadata),
-                            }}>
-                                {year}
-                            </NativeText>
-                        )}
-                        {secondaryMetadata && (
-                            <NativeText textStyle={{
-                                ...(compact ? styles.compactMediaMetadata : styles.mediaMetadata),
-                            }}>
-                                {secondaryMetadata}
-                            </NativeText>
-                        )}
-                    </NativeColumn>
-                </NativeRow>
-            </NativeButton>
+                <GridPoster
+                    key={`${item.tmdbid}:${item.poster}`}
+                    poster={item.poster}
+                    width={posterWidth}
+                    height={posterHeight}
+                    compact={compact}
+                />
+                <RNView style={{ width: mediaInfoWidth, paddingTop: spacing.xs, gap: compact ? 3 : 7 }}>
+                    <Text style={compact ? styles.compactMediaTitle : styles.mediaTitle}>
+                        {item.name}
+                    </Text>
+                    {metadata && (
+                        <Text style={compact ? styles.compactMediaMetadata : styles.mediaMetadata}>
+                            {metadata}
+                        </Text>
+                    )}
+                    {yearOnSeparateLine && year && (
+                        <Text style={compact ? styles.compactMediaMetadata : styles.mediaMetadata}>
+                            {year}
+                        </Text>
+                    )}
+                    {secondaryMetadata && (
+                        <Text style={compact ? styles.compactMediaMetadata : styles.mediaMetadata}>
+                            {secondaryMetadata}
+                        </Text>
+                    )}
+                </RNView>
+            </Pressable>
         );
         return (
-            <NativeColumn style={{ width: rowWidth }}>
-                <NativeRow
-                    alignment="start"
-                    spacing={posterTextGap}
-                    style={{ width: rowWidth, paddingHorizontal: rowHorizontalPadding, paddingVertical: compact ? 10 : 12 }}
-                >
+            <RNView style={{ width: rowWidth }}>
+                <RNView style={[
+                    styles.row,
+                    { width: rowWidth, paddingHorizontal: rowHorizontalPadding, paddingVertical: compact ? 10 : 12, gap: posterTextGap },
+                ]}>
                     {mediaButton}
-                    <RNHostView matchContents>
-                        <RNView style={[styles.menuActionSlot, { width: menuActionWidth, minWidth: menuActionWidth }]}>{menu}</RNView>
-                    </RNHostView>
-                </NativeRow>
-                <RNHostView matchContents>
-                    <RNView style={[
-                        styles.divider,
-                        { backgroundColor: colors.border },
-                        compact
-                            ? { width: rowWidth - rowHorizontalPadding * 2, marginHorizontal: rowHorizontalPadding }
-                            : { width: rowWidth },
-                    ]} />
-                </RNHostView>
-            </NativeColumn>
+                    <RNView style={[styles.menuActionSlot, { width: menuActionWidth, minWidth: menuActionWidth }]}>{menu}</RNView>
+                </RNView>
+                <RNView style={[
+                    styles.divider,
+                    { backgroundColor: colors.border },
+                    compact
+                        ? { width: rowWidth - rowHorizontalPadding * 2, marginHorizontal: rowHorizontalPadding }
+                        : { width: rowWidth },
+                ]} />
+            </RNView>
         );
     }, [
         colors.backgroundOverlay,
@@ -369,6 +542,53 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         onAddToWatchlist,
     ]);
 
+    const listFooter = loadingMore ? (
+        <View style={styles.listFooter}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={styles.loadingText}>Loading more...</Text>
+        </View>
+    ) : loadMoreError ? (
+        <View style={[styles.listFooter, styles.listFooterError]}>
+            <Text style={styles.loadingText}>{loadMoreError}</Text>
+            <Pressable accessibilityRole="button" onPress={() => void loadMore(true)}>
+                <Text style={[styles.retryText, { color: colors.primary }]}>Try again</Text>
+            </Pressable>
+        </View>
+    ) : emptyFilteredPage ? (
+        <View style={[styles.listFooter, styles.listFooterError]}>
+            <Text style={styles.loadingText}>No titles on this page meet the popularity threshold.</Text>
+            <Pressable accessibilityRole="button" onPress={() => void loadMore()}>
+                <Text style={[styles.retryText, { color: colors.primary }]}>Load more titles</Text>
+            </Pressable>
+        </View>
+    ) : items === undefined && apiUrl && data.length > 0 && page >= totalPages ? (
+        <View accessible accessibilityRole="text" style={styles.listFooter}>
+            <Ionicons name="checkmark-circle-outline" size={20} color={colors.primary} />
+            <Text style={styles.loadingText}>That's all</Text>
+        </View>
+    ) : null;
+
+    const listEmptyComponent = minimumPopularity === undefined ? undefined : (
+        <View style={styles.centeredContainer}>
+            <Text style={styles.loadingText}>
+                {page >= totalPages
+                    ? `No titles with popularity >= ${minimumPopularity} found.`
+                    : 'No matching titles on this page.'}
+            </Text>
+            {page < totalPages && (
+                <Pressable
+                    accessibilityRole="button"
+                    disabled={loadingMore}
+                    onPress={() => void loadMore()}
+                >
+                    <Text style={[styles.retryText, { color: colors.primary }]}>
+                        {loadingMore ? 'Loading more...' : 'Load more titles'}
+                    </Text>
+                </Pressable>
+            )}
+        </View>
+    );
+
     return (
         <SafeAreaView
             edges={safeAreaEdges.filter((edge) => edge !== 'bottom')}
@@ -387,18 +607,21 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                         <Text style={[styles.retryText, { color: colors.primary }]}>Try again</Text>
                     </Pressable>
                 </View>
-            ) : (items ?? data).length === 0 ? (
+            ) : (items ?? data).length === 0 && minimumPopularity === undefined ? (
                 <View style={styles.centeredContainer}>
                     <Text style={styles.loadingText}>No titles found.</Text>
                 </View>
             ) : (
-                <NativeStackList
+                <FlatList<MediaGridItem>
                     data={items ?? data}
-                    axis="vertical"
-                    nativeItems
                     keyExtractor={(item) => String(item.tmdbid)}
-                    renderItem={renderItem}
-                    style={styles.listContent}
+                    renderItem={({ item }) => renderItem(item)}
+                    style={styles.list}
+                    contentContainerStyle={styles.listContent}
+                    ListEmptyComponent={listEmptyComponent}
+                    ListFooterComponent={listFooter ?? undefined}
+                    onEndReached={items === undefined && apiUrl ? () => void loadMore() : undefined}
+                    onEndReachedThreshold={0.5}
                 />
             )}
         </SafeAreaView>
@@ -407,7 +630,28 @@ const MediaGrid: React.FC<MediaGridProps> = ({
 
 const styles = StyleSheet.create({
     container: { flex: 1 },
-    listContent: { flex: 1, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+    list: { flex: 1 },
+    listContent: { paddingTop: spacing.sm, paddingBottom: spacing.lg },
+    listFooter: {
+        minHeight: 72,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: spacing.sm,
+        paddingHorizontal: spacing.lg,
+        paddingVertical: spacing.lg,
+    },
+    listFooterError: {
+        flexDirection: 'column',
+    },
+    row: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    mediaButton: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
     poster: {
         width: 88,
         height: 132,
