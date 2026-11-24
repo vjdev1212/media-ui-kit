@@ -329,8 +329,8 @@ export default function AppleTVCarousel({
             hitSlop={8}
             style={[
                 styles.paginationDot,
-                { backgroundColor: 'rgba(255, 255, 255, 0.68)' },
-                activeIndex === index && { backgroundColor: '#FFFFFF', width: 12 },
+                { backgroundColor: 'rgba(0, 0, 0, 0.5)' },
+                activeIndex === index && { backgroundColor: '#000000', width: 12 },
             ]}
             onPress={() => scrollToIndex(index)}
         />
@@ -402,7 +402,7 @@ export default function AppleTVCarousel({
                                     <MediaLogo logo={item.logo ?? ''} title={item.title} />
                                 </View>
                                 {item.subtitle && (
-                                    <Text style={[styles.subtitle, { fontSize: dims.subtitleSize, color: '#FFFFFF' }]} numberOfLines={2}>
+                                    <Text style={[styles.subtitle, { fontSize: dims.subtitleSize, color: '#FFFFFF' }]} numberOfLines={3}>
                                         {item.subtitle}
                                     </Text>
                                 )}
@@ -412,7 +412,7 @@ export default function AppleTVCarousel({
                                     </Text>
                                     {data.length > 1 && (
                                         <View pointerEvents="box-none" style={styles.paginationPosition}>
-                                            <BlurView intensity={20} tint="dark" style={styles.paginationBlur}>
+                                            <BlurView intensity={50} tint="light" style={styles.paginationBlur}>
                                                 <View style={styles.paginationDots}>
                                                     {data.map((_, dotIndex) => renderPaginationDot(dotIndex))}
                                                 </View>
@@ -420,7 +420,7 @@ export default function AppleTVCarousel({
                                         </View>
                                     )}
                                     <View style={styles.typeIndicator}>
-                                        <Text style={[styles.typeText, { fontSize: isLandscape ? 10 : 12, color: '#FFFFFF' }]}>
+                                        <Text style={[styles.typeText, { fontSize: isLandscape ? 10 : 12 }]}>
                                             {item.type === 'movie' ? 'MOVIE' : 'SERIES'}
                                         </Text>
                                     </View>
@@ -471,10 +471,10 @@ const styles = StyleSheet.create({
     contentContainer: { alignItems: 'flex-end', zIndex: 1 },
     textContainer: { justifyContent: 'flex-end' },
     logoContainer: { marginBottom: spacing.sm },
-    subtitle: { lineHeight: 22, maxWidth: 600, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
+    subtitle: { paddingBottom: spacing.sm, lineHeight: 22, maxWidth: 600, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
     metaContainer: { position: 'relative', width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
     metaText: { fontWeight: '500' },
-    typeIndicator: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(0, 0, 0, 0.72)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' },
+    typeIndicator: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(222, 222, 222, 0.62)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' },
     typeText: { fontWeight: '600', letterSpacing: 1 },
     loadingContainer: { justifyContent: 'center', alignItems: 'center' },
     paginationBlur: {
@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         paddingHorizontal: 6,
         paddingVertical: 6,
-        backgroundColor: 'rgba(0, 0, 0, 0.38)',
+        backgroundColor: 'rgba(222, 222, 222, 0.62)',
     },
     paginationPosition: { position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, alignItems: 'center', justifyContent: 'center', zIndex: 1 },
     paginationDots: { flexDirection: 'row', alignItems: 'center', gap: 6 },
