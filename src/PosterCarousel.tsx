@@ -23,6 +23,7 @@ import Animated, {
 import { getYear } from './Date';
 import { useTheme } from './ThemeContext';
 import NativePager from './native-pager';
+import { spacing } from './theme';
 
 export interface CarouselItem {
     id: string;
@@ -397,7 +398,9 @@ export default function AppleTVCarousel({
                             ]}
                         >
                             <View style={[styles.textContainer, { flex: 1 }]}>
-                                <MediaLogo logo={item.logo ?? ''} title={item.title} />
+                                <View style={styles.logoContainer}>
+                                    <MediaLogo logo={item.logo ?? ''} title={item.title} />
+                                </View>
                                 {item.subtitle && (
                                     <Text style={[styles.subtitle, { fontSize: dims.subtitleSize, color: '#FFFFFF' }]} numberOfLines={2}>
                                         {item.subtitle}
@@ -467,6 +470,7 @@ const styles = StyleSheet.create({
     gradient: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
     contentContainer: { alignItems: 'flex-end', zIndex: 1 },
     textContainer: { justifyContent: 'flex-end' },
+    logoContainer: { marginBottom: spacing.sm },
     subtitle: { lineHeight: 22, maxWidth: 600, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
     metaContainer: { position: 'relative', width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
     metaText: { fontWeight: '500' },
