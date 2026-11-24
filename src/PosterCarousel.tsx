@@ -144,7 +144,7 @@ export default function AppleTVCarousel({
             carouselHeight: width * (4 / 3),
             subtitleSize: isLandscape ? 14 : 14,
             contentPadding: isLandscape ? 40 : 20,
-            bottomPadding: isLandscape ? 40 : 40,
+            bottomPadding: isLandscape ? 40 : 20,
         };
     }, [width, height, isLandscape]);
     const carouselHeight = responsiveDims.carouselHeight + topInset;
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
     backdropImage: { flex: 1, justifyContent: 'flex-end', overflow: 'hidden' },
     gradient: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
     contentContainer: { alignItems: 'flex-end', zIndex: 1 },
-    textContainer: { justifyContent: 'flex-end', paddingBottom: 10 },
+    textContainer: { justifyContent: 'flex-end' },
     subtitle: { lineHeight: 22, maxWidth: 600, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
     metaContainer: { position: 'relative', width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
     metaText: { fontWeight: '500' },
