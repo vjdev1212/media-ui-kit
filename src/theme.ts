@@ -80,6 +80,19 @@ const createColors = (scheme: 'light' | 'dark'): AppColors => {
 
 export const LightColors = createColors('light');
 export const DarkColors = createColors('dark');
+export const PosterOverlayColors: AppColors = {
+    ...DarkColors,
+    primary: '#FFFFFF',
+    onPrimary: '#000000',
+    primaryMuted: 'transparent',
+    primaryBorder: 'rgba(255, 255, 255, 0.32)',
+    primarySurface: 'transparent',
+    text: '#FFFFFF',
+    textMuted: 'rgba(255, 255, 255, 0.78)',
+    textDim: 'rgba(255, 255, 255, 0.56)',
+    border: 'rgba(255, 255, 255, 0.24)',
+    borderStrong: 'rgba(255, 255, 255, 0.4)',
+};
 export const Colors = LightColors;
 export const systemDarkBackground = DarkColors.background;
 

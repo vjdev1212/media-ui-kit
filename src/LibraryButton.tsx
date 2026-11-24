@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { NativeButton } from './NativeUiControls';
 import { useTheme } from './ThemeContext';
 import { radius } from './theme';
+import GlassButtonSurface from './GlassButtonSurface';
 
 export interface LibraryButtonItem {
   id: string;
@@ -29,6 +30,7 @@ export interface LibraryButtonProps {
   onPressFeedback?: () => void | Promise<void>;
   size?: number;
   color?: string;
+  glass?: boolean;
 }
 
 export default function LibraryButton({
@@ -37,6 +39,7 @@ export default function LibraryButton({
   onPressFeedback,
   size = 28,
   color,
+  glass = false,
 }: LibraryButtonProps) {
   const { colors } = useTheme();
   const iconColor = color ?? colors.text;
@@ -73,14 +76,20 @@ export default function LibraryButton({
     }
   };
 
-  return (
+  const button = (
     <NativeButton
       variant="text"
       onPress={handlePress}
       style={[
         styles.button,
-        { backgroundColor: colors.primarySurface, borderColor: colors.primaryBorder },
-        isInLibrary && { backgroundColor: colors.primaryMuted, opacity: 0.5 },
+        {
+          backgroundColor: glass ? 'transparent' : colors.primarySurface,
+          borderColor: colors.primaryBorder,
+        },
+        isInLibrary && {
+          backgroundColor: glass ? 'transparent' : colors.primaryMuted,
+          opacity: 0.5,
+        },
       ]}
       disabled={loading}
     >
@@ -90,6 +99,8 @@ export default function LibraryButton({
       }
     </NativeButton>
   );
+
+  return glass ? <GlassButtonSurface>{button}</GlassButtonSurface> : button;
 }
 
 const styles = StyleSheet.create({

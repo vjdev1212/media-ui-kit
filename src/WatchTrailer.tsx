@@ -5,17 +5,20 @@ import Svg, { Path, Rect } from 'react-native-svg';
 import { useTheme } from './ThemeContext';
 import { NativeButton } from './NativeUiControls';
 import { radius } from './theme';
+import GlassButtonSurface from './GlassButtonSurface';
 
 interface WatchTrailerButtonProps {
     trailerKey: string | null;
     size?: number;
     color?: string;
+    glass?: boolean;
 }
 
 const WatchTrailerButton: React.FC<WatchTrailerButtonProps> = ({
     trailerKey,
     size = 28,
     color,
+    glass = false,
 }) => {
     const { colors } = useTheme();
     const iconColor = trailerKey ? color ?? colors.text : colors.textDim;
@@ -38,13 +41,13 @@ const WatchTrailerButton: React.FC<WatchTrailerButtonProps> = ({
         }
     };
 
-    return (
+    const button = (
         <NativeButton
             variant="text"
             style={[
                 styles.button,
                 {
-                    backgroundColor: colors.primarySurface,
+                    backgroundColor: glass ? 'transparent' : colors.primarySurface,
                     borderColor: colors.primaryBorder,
                 },
                 !trailerKey && { opacity: 0.5 },
@@ -68,6 +71,10 @@ const WatchTrailerButton: React.FC<WatchTrailerButtonProps> = ({
             </Svg>
         </NativeButton>
     );
+
+    return glass
+        ? <GlassButtonSurface isInteractive={Boolean(trailerKey)}>{button}</GlassButtonSurface>
+        : button;
 };
 
 const styles = StyleSheet.create({

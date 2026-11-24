@@ -9,7 +9,17 @@ import type { LayoutChangeEvent } from 'react-native';
 import { ActivityIndicator, Text } from './Themed';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import Animated, { cubicBezier, useReducedMotion } from 'react-native-reanimated';
+import MediaLogo from './MediaLogo';
+import PosterVignette from './PosterVignette';
+import Animated, {
+    cubicBezier,
+    Extrapolation,
+    interpolate,
+    useAnimatedStyle,
+    useReducedMotion,
+    useSharedValue,
+    type SharedValue,
+} from 'react-native-reanimated';
 import { getYear } from './Date';
 import { useTheme } from './ThemeContext';
 import NativePager from './native-pager';
@@ -18,6 +28,7 @@ export interface CarouselItem {
     id: string;
     title: string;
     subtitle?: string;
+    logo?: string;
     posterUrl: string;
     backdropUrl: string;
     type: 'movie' | 'series';
@@ -39,7 +50,64 @@ export interface PosterCarouselProps {
     autoPlay?: boolean;
     autoPlayInterval?: number;
     topInset?: number;
+    scrollY?: SharedValue<number>;
 }
+
+interface CarouselImageProps {
+    item: CarouselItem;
+    active: boolean;
+    carouselHeight: number;
+    reducedMotion: boolean;
+    scrollY?: SharedValue<number>;
+}
+
+const CarouselImage = React.memo(({
+    item,
+    active,
+    carouselHeight,
+    reducedMotion,
+    scrollY,
+}: CarouselImageProps) => {
+    const localScrollY = useSharedValue(0);
+    const scrollOffset = scrollY ?? localScrollY;
+    const imageScrollStyle = useAnimatedStyle(() => {
+        if (reducedMotion) return {};
+
+        const progress = interpolate(
+            scrollOffset.get(),
+            [0, carouselHeight],
+            [0, 1],
+            Extrapolation.CLAMP,
+        );
+        return {
+            transform: [
+                { translateY: progress * carouselHeight * 0.18 },
+                { scale: 1 + progress * 0.12 },
+            ],
+        };
+    }, [carouselHeight, reducedMotion, scrollOffset]);
+
+    return (
+        <Animated.View style={[StyleSheet.absoluteFill, imageScrollStyle]}>
+            <Animated.Image
+                key={`${item.id}`}
+                source={{ uri: item.backdropUrl || item.posterUrl }}
+                resizeMethod="resize"
+                style={[
+                    StyleSheet.absoluteFill,
+                    {
+                        opacity: active ? 1 : 0,
+                        transform: [{ scale: active || reducedMotion ? 1 : 1.04 }],
+                        transitionProperty: ['opacity', 'transform'],
+                        transitionDuration: reducedMotion ? '120ms' : '260ms',
+                        transitionTimingFunction: cubicBezier(0.23, 1, 0.32, 1),
+                    },
+                ]}
+                resizeMode="cover"
+            />
+        </Animated.View>
+    );
+});
 
 const posterImageGradient = [
     'transparent',
@@ -54,6 +122,7 @@ export default function AppleTVCarousel({
     autoPlay = true,
     autoPlayInterval = 5000,
     topInset = 0,
+    scrollY,
 }: PosterCarouselProps) {
     const { colors } = useTheme();
     const reducedMotion = useReducedMotion();
@@ -72,8 +141,7 @@ export default function AppleTVCarousel({
         return {
             screenWidth: width,
             screenHeight: height,
-            carouselHeight: width,
-            titleSize: isLandscape ? 28 : 26,
+            carouselHeight: width * (4 / 3),
             subtitleSize: isLandscape ? 14 : 14,
             contentPadding: isLandscape ? 40 : 20,
             bottomPadding: isLandscape ? 40 : 40,
@@ -174,8 +242,43 @@ export default function AppleTVCarousel({
                     });
                 });
 
-                setData([...uniqueItems.values()].sort(() => 0.5 - Math.random()).slice(0, 6));
+                const carouselItems = [...uniqueItems.values()].sort(() => 0.5 - Math.random()).slice(0, 6);
+                setData(carouselItems);
                 setActiveIndex(0);
+
+                const logoResults = await Promise.all(carouselItems.map(async (item) => {
+                    try {
+                        const mediaPath = item.type === 'movie' ? 'movie' : 'tv';
+                        const response = await fetch(
+                            `https://api.themoviedb.org/3/${mediaPath}/${item.tmdbid}/external_ids?api_key=${encodeURIComponent(apiKey ?? '')}`,
+                            { signal: controller.signal },
+                        );
+                        if (!response.ok) throw new Error(`TMDB external IDs request failed with HTTP ${response.status}.`);
+                        const payload: unknown = await response.json();
+                        const imdbId = payload && typeof payload === 'object' && 'imdb_id' in payload
+                            && typeof payload.imdb_id === 'string' && payload.imdb_id.trim().length > 0
+                            ? payload.imdb_id.trim()
+                            : undefined;
+                        return imdbId
+                            ? { id: item.id, logo: `https://images.metahub.space/logo/medium/${imdbId}/img` }
+                            : null;
+                    } catch (error) {
+                        if (!controller.signal.aborted) {
+                            console.error(`Error fetching ${item.type} carousel logo:`, error);
+                        }
+                        return null;
+                    }
+                }));
+
+                if (controller.signal.aborted) return;
+                const logosByItemId = new Map<string, string>();
+                logoResults.forEach((result) => {
+                    if (result) logosByItemId.set(result.id, result.logo);
+                });
+                setData((currentData) => currentData.map((item) => {
+                    const logo = logosByItemId.get(item.id);
+                    return logo ? { ...item, logo } : item;
+                }));
             } catch (error) {
                 if (!controller.signal.aborted) console.error('Error fetching carousel data:', error);
             } finally {
@@ -235,7 +338,7 @@ export default function AppleTVCarousel({
     const renderCarouselItem = useCallback((item: CarouselItem, index: number) => {
         const dims = responsiveDims;
         return (
-            <View style={[styles.carouselItem, { width: itemWidth, height: dims.carouselHeight + topInset }]}>
+            <View style={{ width: itemWidth, height: dims.carouselHeight + topInset }}>
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel={`Open ${item.title}`}
@@ -262,21 +365,12 @@ export default function AppleTVCarousel({
                 >
                     <View style={styles.backdropImage}>
                         {(Math.abs(activeIndex - index) <= 1 || Math.abs(activeIndex - index) >= data.length - 1) && (
-                            <Animated.Image
-                                key={`${item.id}-${index}`}
-                                source={{ uri: item.backdropUrl || item.posterUrl }}
-                                resizeMethod="resize"
-                                style={[
-                                    StyleSheet.absoluteFill,
-                                    {
-                                        opacity: activeIndex === index ? 1 : 0,
-                                        transform: [{ scale: activeIndex === index || reducedMotion ? 1 : 1.04 }],
-                                        transitionProperty: ['opacity', 'transform'],
-                                        transitionDuration: reducedMotion ? '120ms' : '260ms',
-                                        transitionTimingFunction: cubicBezier(0.23, 1, 0.32, 1),
-                                    },
-                                ]}
-                                resizeMode="cover"
+                            <CarouselImage
+                                item={item}
+                                active={activeIndex === index}
+                                carouselHeight={carouselHeight}
+                                reducedMotion={reducedMotion}
+                                scrollY={scrollY}
                             />
                         )}
                         <LinearGradient
@@ -286,6 +380,7 @@ export default function AppleTVCarousel({
                             end={{ x: 0, y: 1 }}
                             style={styles.gradient}
                         />
+                        <PosterVignette />
                         <Animated.View
                             style={[
                                 styles.contentContainer,
@@ -302,9 +397,7 @@ export default function AppleTVCarousel({
                             ]}
                         >
                             <View style={[styles.textContainer, { flex: 1 }]}>
-                                <Text style={[styles.title, { fontSize: dims.titleSize, color: '#FFFFFF' }]} numberOfLines={1}>
-                                    {item.title}
-                                </Text>
+                                <MediaLogo logo={item.logo ?? ''} title={item.title} />
                                 {item.subtitle && (
                                     <Text style={[styles.subtitle, { fontSize: dims.subtitleSize, color: '#FFFFFF' }]} numberOfLines={2}>
                                         {item.subtitle}
@@ -337,7 +430,7 @@ export default function AppleTVCarousel({
         );
     }, [activeIndex, data, isLandscape, handleItemPress, itemWidth, reducedMotion, renderPaginationDot, responsiveDims, topInset]);
 
-    if (loading) {
+    if (loading && !data.length) {
         return (
             <View
                 onLayout={handleCarouselLayout}
@@ -369,14 +462,12 @@ export default function AppleTVCarousel({
 
 const styles = StyleSheet.create({
     container: { position: 'relative' },
-    carouselItem: { marginBottom: 10 },
     carouselTouchable: { flex: 1 },
     backdropImage: { flex: 1, justifyContent: 'flex-end', overflow: 'hidden' },
     gradient: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 0 },
     contentContainer: { alignItems: 'flex-end', zIndex: 1 },
     textContainer: { justifyContent: 'flex-end', paddingBottom: 10 },
-    title: { fontWeight: '700', marginBottom: 6, textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
-    subtitle: { lineHeight: 22, textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2, maxWidth: 600 },
+    subtitle: { lineHeight: 22, maxWidth: 600, textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2 },
     metaContainer: { position: 'relative', width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 10 },
     metaText: { fontWeight: '500' },
     typeIndicator: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: 'rgba(0, 0, 0, 0.72)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' },

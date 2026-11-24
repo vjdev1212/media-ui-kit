@@ -4,7 +4,7 @@ import { Text, View } from './Themed';
 import { formatDate } from './Date';
 import { FontAwesome } from '@expo/vector-icons';
 import { useTheme } from './ThemeContext';
-import { spacing, typography } from './theme';
+import { radius, spacing, typography } from './theme';
 
 interface Language { english_name: string; }
 interface MediaContentDetailsListProps {
@@ -20,8 +20,6 @@ interface MediaContentDetailsListProps {
 const UNKNOWN_TEXT = 'Unknown';
 const NOT_RATED_TEXT = 'Not Rated';
 const STAR_SIZE = 14;
-const containerMargin = spacing.mdLg;
-
 const countryCodeToName = (code: string) => {
   try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(code.toUpperCase()) || code; }
   catch { return code; }
@@ -55,7 +53,7 @@ const MediaContentDetailsList: React.FC<MediaContentDetailsListProps> = ({
       </View>
       <View style={styles.valueCell}>
         {typeof value === 'string'
-          ? <Text numberOfLines={2} style={[styles.value, { color: colors.text }]}>{value}</Text>
+          ? <Text numberOfLines={2} style={[styles.value, { color: colors.textMuted }]}>{value}</Text>
           : value}
       </View>
     </View>
@@ -63,7 +61,7 @@ const MediaContentDetailsList: React.FC<MediaContentDetailsListProps> = ({
 
   const renderRatingValue = () => (
     <View style={styles.ratingContainer}>
-      <Text style={[styles.value, { color: colors.text }]}>{computedValues.ratingText}</Text>
+      <Text style={[styles.value, { color: colors.textMuted }]}>{computedValues.ratingText}</Text>
       {computedValues.hasRating && <View style={styles.starWrapper}><FontAwesome name="star" size={STAR_SIZE} color={colors.rating} /></View>}
     </View>
   );
@@ -79,26 +77,35 @@ const MediaContentDetailsList: React.FC<MediaContentDetailsListProps> = ({
 
   return (
     <View style={styles.container}>
-      <View style={[styles.headerContainer, { paddingHorizontal: containerMargin }]}>
+      <View style={styles.headerContainer}>
         <Text style={[styles.sectionTitle, { color: colors.text }]}>Information</Text>
       </View>
-      <View>
-        {tableData.map((item, index) => renderTableRow(
-          item.label,
-          item.value,
-          item.key,
-          index === tableData.length - 1,
-        ))}
+      <View style={[styles.card, { backgroundColor: colors.primaryCard, borderColor: colors.border }]}>
+        <View>
+          {tableData.map((item, index) => renderTableRow(
+            item.label,
+            item.value,
+            item.key,
+            index === tableData.length - 1,
+          ))}
+        </View>
       </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { marginVertical: spacing.md },
+  container: { marginHorizontal: spacing.mdLg, marginVertical: spacing.md },
+  card: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: radius.md,
+    borderCurve: 'continuous',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
   headerContainer: { marginBottom: spacing.md },
   sectionTitle: { ...typography.headline },
-  tableRow: { flexDirection: 'row', marginHorizontal: spacing.mdLg, paddingVertical: spacing.sm, alignItems: 'center' },
+  tableRow: { flexDirection: 'row', minHeight: 44, alignItems: 'center' },
   labelCell: { width: 120, paddingRight: spacing.md, justifyContent: 'center' },
   valueCell: { flex: 1, justifyContent: 'center' },
   label: { ...typography.subhead, fontWeight: '500' },
