@@ -2,11 +2,15 @@ import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import {
   FlatList,
   Image,
+  Platform,
+  Pressable,
   ScrollView as RNScrollView,
+  Share,
   StyleSheet,
   useWindowDimensions,
   View as RNView,
 } from 'react-native';
+import { MenuView, type MenuAction } from '@expo/ui/community/menu';
 import { Text, View } from './Themed';
 import { getYear } from './Date';
 import { SvgXml } from 'react-native-svg';
@@ -51,6 +55,8 @@ export interface PosterListProps {
   minimumPopularity?: number;
   compact?: boolean;
   onItemPress: (tmdbId: number, type: 'movie' | 'series') => void;
+  onAddToWatchlist?: (item: PosterItemData) => Promise<boolean>;
+  onActionError?: (title: string, message: string) => void;
   onSeeAllPress: (
     apiUrl: string,
     title: string,
@@ -66,20 +72,69 @@ const PosterItem = React.memo(({
   posterHeight,
   cardHeight,
   onItemPress,
+  onAddToWatchlist,
+  onActionError,
 }: {
   item: PosterItemData;
   posterWidth: number;
   posterHeight: number;
   cardHeight: number;
   onItemPress: PosterListProps['onItemPress'];
+  onAddToWatchlist?: PosterListProps['onAddToWatchlist'];
+  onActionError?: PosterListProps['onActionError'];
 }) => {
   const { colors } = useTheme();
   const [imgError, setImgError] = useState(false);
+  const longPressRef = React.useRef(false);
   const year = item.year?.split('–')[0] || item.year;
 
   const handlePress = useCallback(() => {
     onItemPress(item.tmdbid, item.type);
   }, [item.tmdbid, item.type, onItemPress]);
+
+  const menuActions: MenuAction[] = [
+    { id: 'open', title: 'View', image: 'arrow.up.right' as const },
+    ...(onAddToWatchlist ? [{ id: 'watchlist', title: 'Add to Watchlist', image: 'bookmark' as const }] : []),
+    { id: 'share', title: 'Share', image: 'square.and.arrow.up' as const },
+  ];
+
+  const handleMenuAction = useCallback(async (actionId: string) => {
+    if (actionId === 'open') {
+      handlePress();
+    } else if (actionId === 'watchlist' && onAddToWatchlist) {
+      try {
+        const added = await onAddToWatchlist(item);
+        if (!added) onActionError?.('Watchlist', 'This title could not be added. It may already be in your watchlist.');
+      } catch (error) {
+        console.error('Error adding title to watchlist:', error);
+        onActionError?.('Watchlist', 'Unable to add this title to your watchlist.');
+      }
+    } else if (actionId === 'share') {
+      try {
+        await Share.share({
+          message: `https://www.themoviedb.org/${item.type === 'movie' ? 'movie' : 'tv'}/${item.tmdbid}`,
+        });
+      } catch (error) {
+        console.error('Error sharing title:', error);
+        onActionError?.('Share', 'Unable to share this title.');
+      }
+    }
+  }, [handlePress, item, onActionError, onAddToWatchlist]);
+
+  const handleLongPress = useCallback(() => {
+    longPressRef.current = true;
+    setTimeout(() => {
+      longPressRef.current = false;
+    }, 1000);
+  }, []);
+
+  const handleCardPress = useCallback(() => {
+    if (longPressRef.current) {
+      longPressRef.current = false;
+      return;
+    }
+    handlePress();
+  }, [handlePress]);
 
   const contents = (
     <>
@@ -103,15 +158,32 @@ const PosterItem = React.memo(({
       <Text style={[styles.posterYear, { color: colors.textMuted }]}>{year}</Text>
     </>
   );
-  return (
-    <NativeButton
-      variant="text"
-      onPress={handlePress}
+  const card = (
+    <Pressable
+      onLongPress={handleLongPress}
+      onPress={handleCardPress}
       accessibilityLabel={`Open ${item.name}`}
       style={{ width: posterWidth, height: cardHeight, flexShrink: 0 }}
     >
       {contents}
-    </NativeButton>
+    </Pressable>
+  );
+
+  const longPressMenu = Platform.OS === 'web' ? card : (
+    <MenuView
+      title={item.name}
+      actions={menuActions}
+      shouldOpenOnLongPress
+      onPressAction={({ nativeEvent }) => void handleMenuAction(nativeEvent.event)}
+    >
+      {card}
+    </MenuView>
+  );
+
+  return (
+    <RNView style={{ width: posterWidth, height: cardHeight, flexShrink: 0 }}>
+      {longPressMenu}
+    </RNView>
   );
 });
 
@@ -134,6 +206,8 @@ const PosterList = ({
   minimumPopularity,
   compact = false,
   onItemPress,
+  onAddToWatchlist,
+  onActionError,
   onSeeAllPress,
 }: PosterListProps) => {
   const { colors } = useTheme();
@@ -286,8 +360,10 @@ const PosterList = ({
       posterHeight={posterHeight}
       cardHeight={posterCardHeight}
       onItemPress={onItemPress}
+      onAddToWatchlist={onAddToWatchlist}
+      onActionError={onActionError}
     />
-  ), [onItemPress, posterCardHeight, posterHeight, posterWidth]);
+  ), [onActionError, onAddToWatchlist, onItemPress, posterCardHeight, posterHeight, posterWidth]);
 
   if (loading) {
     return (

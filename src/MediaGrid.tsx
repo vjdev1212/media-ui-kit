@@ -298,6 +298,8 @@ const MediaGrid: React.FC<MediaGridProps> = ({
     const totalPagesRef = useRef(1);
     const loadingMoreRef = useRef(false);
     const loadMoreControllerRef = useRef<AbortController | null>(null);
+    const longPressItemRef = useRef<number | null>(null);
+    const longPressResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const activeSources = useMemo(
         () => sources ?? (
             apiUrl && mediaType !== 'any'
@@ -467,6 +469,23 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         }
     }, [mediaType, onActionError, onAddToWatchlist, onItemPress]);
 
+    const markLongPress = useCallback((item: MediaGridItem) => {
+        longPressItemRef.current = item.tmdbid;
+        if (longPressResetRef.current) clearTimeout(longPressResetRef.current);
+        longPressResetRef.current = setTimeout(() => {
+            longPressItemRef.current = null;
+            longPressResetRef.current = null;
+        }, 1000);
+    }, []);
+
+    const consumeLongPress = useCallback((item: MediaGridItem) => {
+        if (longPressItemRef.current !== item.tmdbid) return false;
+        longPressItemRef.current = null;
+        if (longPressResetRef.current) clearTimeout(longPressResetRef.current);
+        longPressResetRef.current = null;
+        return true;
+    }, []);
+
     const renderItem = useCallback((item: MediaGridItem) => {
         const itemType = (item.type ?? mediaType) === 'movie'
             ? 'Movie'
@@ -522,7 +541,10 @@ const MediaGrid: React.FC<MediaGridProps> = ({
             <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={`Open ${item.name}`}
-                onPress={() => onItemPress(item)}
+                onLongPress={() => markLongPress(item)}
+                onPress={() => {
+                    if (!consumeLongPress(item)) onItemPress(item);
+                }}
                 style={[
                     styles.mediaButton,
                     { width: mediaButtonWidth, gap: posterTextGap },
@@ -557,21 +579,30 @@ const MediaGrid: React.FC<MediaGridProps> = ({
                 </RNView>
             </Pressable>
         );
+        const mediaMenu = Platform.OS === 'web' ? mediaButton : (
+            <MenuView
+                title={item.name}
+                actions={menuActions}
+                shouldOpenOnLongPress
+                colorScheme={colorScheme}
+                onPressAction={({ nativeEvent }) => void handleMenuAction(nativeEvent.event, item)}
+            >
+                {mediaButton}
+            </MenuView>
+        );
         return (
             <RNView style={{ width: rowWidth }}>
                 <RNView style={[
                     styles.row,
                     { width: rowWidth, paddingHorizontal: rowHorizontalPadding, paddingVertical: compact ? 10 : 12, gap: posterTextGap },
                 ]}>
-                    {mediaButton}
+                    {mediaMenu}
                     <RNView style={[styles.menuActionSlot, { width: menuActionWidth, minWidth: menuActionWidth }]}>{menu}</RNView>
                 </RNView>
                 <RNView style={[
                     styles.divider,
                     { backgroundColor: colors.border },
-                    compact
-                        ? { width: rowWidth - rowHorizontalPadding * 2, marginHorizontal: rowHorizontalPadding }
-                        : { width: rowWidth },
+                    { width: rowWidth - rowHorizontalPadding * 2, marginHorizontal: rowHorizontalPadding },
                 ]} />
             </RNView>
         );
@@ -580,8 +611,10 @@ const MediaGrid: React.FC<MediaGridProps> = ({
         colors.border,
         colors.textDim,
         compact,
+        consumeLongPress,
         mediaType,
         handleMenuAction,
+        markLongPress,
         mediaButtonWidth,
         mediaInfoWidth,
         menuActionWidth,
@@ -738,12 +771,13 @@ const styles = StyleSheet.create({
         minWidth: 40,
         minHeight: 48,
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
     },
     menuActionSlot: {
         flexShrink: 0,
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
+        paddingTop: spacing.xs,
     },
     posterPlaceholder: {
         alignItems: 'center',
