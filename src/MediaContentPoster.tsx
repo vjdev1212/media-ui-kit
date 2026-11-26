@@ -80,9 +80,9 @@ const MediaContentPoster: React.FC<MediaContentPosterProps> = ({ background, isP
 
 const styles = StyleSheet.create({
   posterContainer: { position: 'relative', width: '100%', overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  shadowContainer: { width: '100%', height: '100%', backgroundColor: 'transparent', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.24)' },
+  shadowContainer: { width: '100%', height: '100%', boxShadow: '0 8px 24px rgba(0, 0, 0, 0.24)' },
   poster: { width: '100%', height: '100%' },
-  loaderContainer: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.2)' },
+  loaderContainer: { ...StyleSheet.absoluteFill, alignItems: 'center', justifyContent: 'center' },
 });
 
 export default MediaContentPoster;

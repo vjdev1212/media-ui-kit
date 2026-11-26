@@ -124,7 +124,7 @@ const GridPoster = React.memo(function GridPoster({
                             fadeDuration={0}
                             style={[
                                 styles.poster,
-                                { width, height, backgroundColor: colors.backgroundOverlay },
+                                { width, height, backgroundColor: colors.background },
                             ]}
                             resizeMode="cover"
                         />
@@ -135,7 +135,7 @@ const GridPoster = React.memo(function GridPoster({
                             style={[
                                 StyleSheet.absoluteFill,
                                 styles.posterPlaceholder,
-                                { backgroundColor: colors.backgroundOverlay },
+                                { backgroundColor: colors.background },
                             ]}
                         >
                             <Ionicons

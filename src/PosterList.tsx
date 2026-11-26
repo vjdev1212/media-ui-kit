@@ -307,7 +307,7 @@ const PosterList = ({
               posterWidth={posterWidth}
               posterHeight={posterHeight}
               cardHeight={posterCardHeight}
-              bgColor={colors.backgroundOverlay}
+              bgColor={colors.background}
             />
           ))}
         </RNScrollView>

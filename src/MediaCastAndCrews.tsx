@@ -66,7 +66,9 @@ const CastListItem = React.memo(({
             <Text style={[styles.initials, { color: textColor, fontSize: avatarSize * 0.3 }]}>{item.initials}</Text>
           </View>
         )}
-        <View style={[styles.avatarBorder, { width: avatarSize + 4, height: avatarSize + 4, borderRadius: (avatarSize + 4) / 2, borderColor }]} />
+        {item.hasImage && (
+          <View style={[styles.avatarBorder, { width: avatarSize + 4, height: avatarSize + 4, borderRadius: (avatarSize + 4) / 2, borderColor }]} />
+        )}
       </View>
       <View style={styles.textContainer}>
         <Text style={[styles.name, { color: textColor, fontSize: Math.max(13, avatarSize * 0.12) }]} numberOfLines={1} ellipsizeMode="tail">{item.name}</Text>
@@ -122,10 +124,10 @@ const MediaCastAndCrews: React.FC<MediaCastAndCrewsProps> = ({ cast, onPersonPre
       avatarSize={avatarSize}
       textColor={colors.text}
       mutedTextColor={colors.textMuted}
-      cardColor={colors.backgroundCard}
+      cardColor={colors.background}
       borderColor={colors.border}
     />
-  ), [avatarSize, colors.backgroundCard, colors.border, colors.primary, colors.text, colors.textMuted, onPersonPress]);
+  ), [avatarSize, colors.background, colors.border, colors.text, colors.textMuted, onPersonPress]);
 
   if (cast.length === 0) return null;
 
@@ -159,7 +161,7 @@ const styles = StyleSheet.create({
   avatarContent: { alignItems: 'center' },
   avatarWrapper: { position: 'relative', marginBottom: 12 },
   avatar: {},
-  placeholderAvatar: { justifyContent: "center", alignItems: "center", borderWidth: 2, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5 },
+  placeholderAvatar: { justifyContent: "center", alignItems: "center", borderWidth: 1 },
   avatarBorder: { position: 'absolute', top: -2, left: -2, borderWidth: 0.5 },
   initials: { fontWeight: '600', letterSpacing: 1 },
   textContainer: { alignItems: "center", width: "100%", gap: 2 },
