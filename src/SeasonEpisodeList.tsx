@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
   container: { backgroundColor: 'transparent', marginBottom: spacing.md },
   seasonListContainer: { paddingVertical: spacing.sm, paddingHorizontal: spacing.mdLg, backgroundColor: 'transparent' },
   seasonDropdownButton: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: spacing.sm, width: 150, maxWidth: 150, borderRadius: radius.capsule, backgroundColor: 'transparent' },
-  seasonDropdownText: { ...typography.headline, flex: 1 },
+  seasonDropdownText: { ...typography.headline },
   seasonDropdownArrow: { ...typography.subhead, fontWeight: '600' },
   episodeScrollView: { width: '100%' },
   episodeScrollContent: { paddingHorizontal: spacing.mdLg, paddingVertical: spacing.sm, gap: CARD_GAP },

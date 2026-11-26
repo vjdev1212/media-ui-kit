@@ -322,8 +322,8 @@ const PosterList = ({
       <RNView style={styles.header}>
         <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
         <NativeButton variant="text" onPress={handleSeeAllPress} style={styles.seeAllButton}>
-          <Text style={[styles.seeAllText, { color: colors.textMuted }]}>See All</Text>
-          <Ionicons name="chevron-forward" size={16} color={colors.textMuted} style={styles.chevronIcon} />
+        <Text style={[styles.seeAllText, { color: colors.text, opacity: 0.82 }]}>See All</Text>
+        <Ionicons name="chevron-forward" size={16} color={colors.text} style={[styles.chevronIcon, { opacity: 0.82 }]} />
         </NativeButton>
       </RNView>
       <FlatList

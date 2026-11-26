@@ -402,7 +402,7 @@ export default function AppleTVCarousel({
                                     <MediaLogo logo={item.logo ?? ''} title={item.title} />
                                 </View>
                                 {item.subtitle && (
-                                    <Text style={[styles.subtitle, { fontSize: dims.subtitleSize, color: '#FFFFFF' }]} numberOfLines={3}>
+                                    <Text style={[styles.subtitle, { fontSize: dims.subtitleSize, color: '#FFFFFF', opacity: 0.82 }]} numberOfLines={2}>
                                         {item.subtitle}
                                     </Text>
                                 )}

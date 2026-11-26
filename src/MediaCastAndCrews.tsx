@@ -123,11 +123,11 @@ const MediaCastAndCrews: React.FC<MediaCastAndCrewsProps> = ({ cast, onPersonPre
       onSelectPerson={onPersonPress}
       avatarSize={avatarSize}
       textColor={colors.text}
-      mutedTextColor={colors.textMuted}
+      mutedTextColor={colors.text}
       cardColor={colors.background}
       borderColor={colors.border}
     />
-  ), [avatarSize, colors.background, colors.border, colors.text, colors.textMuted, onPersonPress]);
+  ), [avatarSize, colors.background, colors.border, colors.text, onPersonPress]);
 
   if (cast.length === 0) return null;
 

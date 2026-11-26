@@ -8,11 +8,13 @@ import { spacing, typography } from './theme';
 interface MediaContentDescriptionProps {
   description: string;
   placement?: 'details' | 'poster';
+  collapsedLines?: number;
 }
 
 const MediaContentDescription: React.FC<MediaContentDescriptionProps> = ({
   description,
   placement = 'details',
+  collapsedLines = 3,
 }) => {
   const { colors } = useTheme();
   const [expanded, setExpanded] = useState(false);
@@ -28,8 +30,8 @@ const MediaContentDescription: React.FC<MediaContentDescriptionProps> = ({
         accessibilityLabel={expanded ? 'Show less description' : 'Show more description'}
       >
         <Text
-          style={[styles.description, placement === 'poster' && styles.posterText]}
-          numberOfLines={expanded ? 7 : 3}
+          style={[styles.description, placement === 'poster' && styles.posterText, placement === 'poster' && { opacity: 0.82 }]}
+          numberOfLines={expanded ? 7 : collapsedLines}
           ellipsizeMode="tail"
         >
           {description}
